@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/BuildingBlocks.Contracts/BuildingBlocks.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/Transaction/">
+    <Project Path="src/Transaction/Transaction.Api/Transaction.Api.csproj" />
+    <Project Path="src/Transaction/Transaction.Application/Transaction.Application.csproj" />
+    <Project Path="src/Transaction/Transaction.Domain/Transaction.Domain.csproj" />
+  </Folder>
+</Solution>
