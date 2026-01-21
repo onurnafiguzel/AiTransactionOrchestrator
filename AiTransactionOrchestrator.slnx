@@ -8,6 +8,9 @@
   <Folder Name="/src/BuildingBlocks/">
     <Project Path="src/BuildingBlocks/BuildingBlocks.Contracts/BuildingBlocks.Contracts.csproj" />
   </Folder>
+  <Folder Name="/src/Fraud/">
+    <Project Path="src/Fraud/Fraud.Worker/Fraud.Worker.csproj" Id="8c55f2e7-2c3f-457b-a87d-f3f1012237d8" />
+  </Folder>
   <Folder Name="/src/Transaction/">
     <Project Path="src/Transaction/Transaction.Api/Transaction.Api.csproj" />
     <Project Path="src/Transaction/Transaction.Application/Transaction.Application.csproj" />

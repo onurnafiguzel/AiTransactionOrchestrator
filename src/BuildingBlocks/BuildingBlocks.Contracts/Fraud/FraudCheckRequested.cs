@@ -1,6 +1,6 @@
-﻿namespace BuildingBlocks.Contracts.Transactions;
+﻿namespace BuildingBlocks.Contracts.Fraud;
 
-public sealed record TransactionCreated(
+public sealed record FraudCheckRequested(
     Guid TransactionId,
     decimal Amount,
     string Currency,

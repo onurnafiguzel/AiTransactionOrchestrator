@@ -2,6 +2,8 @@ using MediatR;
 using Transaction.Application.Abstractions;
 using Transaction.Application.Transactions;
 using Transaction.Infrastructure;
+using MassTransit;
+using BuildingBlocks.Contracts.Transactions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +18,21 @@ builder.Services.AddTransactionInfrastructure(
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(Transaction.Application.Transactions.CreateTransactionCommand).Assembly));
 
+builder.Services.AddMassTransit(x =>
+{
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        var host = builder.Configuration["RabbitMq:Host"] ?? "localhost";
+        var user = builder.Configuration["RabbitMq:Username"] ?? "guest";
+        var pass = builder.Configuration["RabbitMq:Password"] ?? "guest";
+
+        cfg.Host(host, h =>
+        {
+            h.Username(user);
+            h.Password(pass);
+        });
+    });
+});
 
 var app = builder.Build();
 
@@ -27,13 +44,17 @@ if (app.Environment.IsDevelopment())
 }
 
 
-app.MapPost("/transactions", async (CreateTransactionRequest req, ISender sender, CancellationToken ct) =>
+app.MapPost("/transactions", async (CreateTransactionRequest req, ISender sender, IPublishEndpoint publish, CancellationToken ct) =>
 {
+    var correlationId = Guid.NewGuid().ToString();
+
     var id = await sender.Send(
-        new CreateTransactionCommand(req.Amount, req.Currency, req.MerchantId, Guid.NewGuid().ToString()),
+        new CreateTransactionCommand(req.Amount, req.Currency, req.MerchantId, correlationId),
         ct);
 
-    return Results.Created($"/transactions/{id}", new { transactionId = id });
+    await publish.Publish(new TransactionCreated(id, req.Amount, req.Currency, req.MerchantId, correlationId), ct);
+
+    return Results.Created($"/transactions/{id}", new { transactionId = id, correlationId });
 });
 
 app.MapGet("/transactions/{id:guid}", async (Guid id, ITransactionRepository repo, CancellationToken ct) =>

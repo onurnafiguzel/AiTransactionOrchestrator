@@ -5,9 +5,14 @@
 		<PackageReference Include="Swashbuckle.AspNetCore" />
 		<PackageReference Include="MediatR" />
 
+		<PackageReference Include="MassTransit" />
+		<PackageReference Include="MassTransit.RabbitMQ" />
+		
+
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
 	  <ProjectReference Include="..\Transaction.Application\Transaction.Application.csproj" />
 	  <ProjectReference Include="..\Transaction.Infrastructure\Transaction.Infrastructure.csproj" />
 	</ItemGroup>
