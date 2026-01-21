@@ -83,19 +83,17 @@ public sealed class Transaction : AggregateRoot
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
-    public void Approve()
+    public void MarkApproved(int riskScore, string explanation)
     {
-        EnsureNotDeleted();
-        Guard.Against(Status != TransactionStatus.PendingFraudCheck, "Only pending fraud check can be approved.");
+        if (IsDeleted) throw new InvalidOperationException("Transaction deleted.");
 
         Status = TransactionStatus.Approved;
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
-    public void Reject()
+    public void MarkRejected(int riskScore, string reason, string explanation)
     {
-        EnsureNotDeleted();
-        Guard.Against(Status != TransactionStatus.PendingFraudCheck, "Only pending fraud check can be rejected.");
+        if (IsDeleted) throw new InvalidOperationException("Transaction deleted.");
 
         Status = TransactionStatus.Rejected;
         UpdatedAtUtc = DateTime.UtcNow;

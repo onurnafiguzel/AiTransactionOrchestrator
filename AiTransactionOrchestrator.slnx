@@ -17,5 +17,6 @@
     <Project Path="src/Transaction/Transaction.Domain/Transaction.Domain.csproj" />
     <Project Path="src/Transaction/Transaction.Infrastructure/Transaction.Infrastructure.csproj" Id="4126e92c-258f-4919-80b7-0d23c02ddf08" />
     <Project Path="src/Transaction/Transaction.Orchestrator.Worker/Transaction.Orchestrator.Worker.csproj" Id="598e91fd-a724-4beb-9cf4-53d0835670c9" />
+    <Project Path="src/Transaction/Transaction.Updater.Worker/Transaction.Updater.Worker.csproj" Id="3debedd7-8ae0-4362-bda9-fe84d8b5b38c" />
   </Folder>
 </Solution>

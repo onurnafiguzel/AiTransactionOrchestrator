@@ -35,7 +35,7 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
         Schedule(() => FraudTimeout, x => x.FraudTimeoutTokenId, s =>
         {
             s.Delay = TimeSpan.FromSeconds(30); // ilk timeout
-            s.Received = e => 
+            s.Received = e =>
                 e.CorrelateById(ctx => ctx.Message.TransactionId);
         });
 
@@ -43,31 +43,31 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
 
         Initially(
             When(TransactionCreated)
-                        .Then(ctx =>
-                        {
-                            ctx.Saga.TransactionId = ctx.Message.TransactionId;
-                            ctx.Saga.Amount = ctx.Message.Amount;
-                            ctx.Saga.Currency = ctx.Message.Currency;
-                            ctx.Saga.MerchantId = ctx.Message.MerchantId;
-                            ctx.Saga.CorrelationKey = ctx.Message.CorrelationId;
-                            ctx.Saga.RetryCount = 0;
-                            ctx.Saga.CreatedAtUtc = DateTime.UtcNow;
-                            ctx.Saga.UpdatedAtUtc = DateTime.UtcNow;
-                        })
-                        .TransitionTo(Submitted)
-                        .Publish(ctx => new FraudCheckRequested(
-                            TransactionId: ctx.Saga.TransactionId,
-                            Amount: ctx.Saga.Amount,
-                            Currency: ctx.Saga.Currency,
-                            MerchantId: ctx.Saga.MerchantId,
-                            CorrelationId: ctx.Saga.CorrelationKey
-                        ))
-                        .TransitionTo(FraudRequested)
-                        .Schedule(FraudTimeout, ctx => new FraudCheckTimeoutExpired(
-                            TransactionId: ctx.Saga.TransactionId,
-                            CorrelationId: ctx.Saga.CorrelationKey
-                        ))
-                );
+                .Then(ctx =>
+                {
+                    ctx.Saga.TransactionId = ctx.Message.TransactionId;
+                    ctx.Saga.Amount = ctx.Message.Amount;
+                    ctx.Saga.Currency = ctx.Message.Currency;
+                    ctx.Saga.MerchantId = ctx.Message.MerchantId;
+                    ctx.Saga.CorrelationKey = ctx.Message.CorrelationId;
+                    ctx.Saga.RetryCount = 0;
+                    ctx.Saga.CreatedAtUtc = DateTime.UtcNow;
+                    ctx.Saga.UpdatedAtUtc = DateTime.UtcNow;
+                })
+                .TransitionTo(Submitted)
+                .Publish(ctx => new FraudCheckRequested(
+                    TransactionId: ctx.Saga.TransactionId,
+                    Amount: ctx.Saga.Amount,
+                    Currency: ctx.Saga.Currency,
+                    MerchantId: ctx.Saga.MerchantId,
+                    CorrelationId: ctx.Saga.CorrelationKey
+                ))
+                .TransitionTo(FraudRequested)
+                .Schedule(FraudTimeout, ctx => new FraudCheckTimeoutExpired(
+                    TransactionId: ctx.Saga.TransactionId,
+                    CorrelationId: ctx.Saga.CorrelationKey
+                ))
+        );
 
         During(FraudRequested,
             When(FraudCheckCompleted)
@@ -78,8 +78,30 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                     ctx.Saga.FraudExplanation = ctx.Message.Explanation;
                     ctx.Saga.UpdatedAtUtc = DateTime.UtcNow;
                 })
-                .TransitionTo(Completed)
-                .Finalize(),
+                // Outcome publish: Approve / Reject
+                .IfElse(ctx => ctx.Message.Decision == FraudDecision.Approve,
+                    approved => approved
+                        .Publish(ctx => new TransactionApproved(
+                            TransactionId: ctx.Saga.TransactionId,
+                            RiskScore: ctx.Message.RiskScore,
+                            Explanation: ctx.Message.Explanation,
+                            CorrelationId: ctx.Saga.CorrelationKey,
+                            OccurredAtUtc: DateTime.UtcNow
+                        ))
+                        .TransitionTo(Completed)
+                        .Finalize(),
+                    rejected => rejected
+                        .Publish(ctx => new TransactionRejected(
+                            TransactionId: ctx.Saga.TransactionId,
+                            RiskScore: ctx.Message.RiskScore,
+                            Reason: "FraudDecisionReject",
+                            Explanation: ctx.Message.Explanation,
+                            CorrelationId: ctx.Saga.CorrelationKey,
+                            OccurredAtUtc: DateTime.UtcNow
+                        ))
+                        .TransitionTo(Completed)
+                        .Finalize()
+                ),
 
             When(FraudTimeout.Received)
                 .Then(ctx =>
@@ -89,14 +111,6 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                 })
                 .IfElse(ctx => ctx.Saga.RetryCount <= MaxRetry,
                     retry => retry
-                        .Then(ctx =>
-                        {
-                            // exponential-ish backoff: 30s, 60s, 120s...
-                            var backoffSeconds = 30 * (int)Math.Pow(2, ctx.Saga.RetryCount - 1);
-                            ctx.Saga.UpdatedAtUtc = DateTime.UtcNow;
-
-                            // tekrar fraud iste
-                        })
                         .Publish(ctx => new FraudCheckRequested(
                             TransactionId: ctx.Saga.TransactionId,
                             Amount: ctx.Saga.Amount,
@@ -104,16 +118,28 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                             MerchantId: ctx.Saga.MerchantId,
                             CorrelationId: ctx.Saga.CorrelationKey
                         ))
-                        .Schedule(FraudTimeout, ctx => new FraudCheckTimeoutExpired(
-                            TransactionId: ctx.Saga.TransactionId,
-                            CorrelationId: ctx.Saga.CorrelationKey
-                        ), ctx => TimeSpan.FromSeconds(30 * (int)Math.Pow(2, ctx.Saga.RetryCount - 1))),
+                        .Schedule(FraudTimeout,
+                            ctx => new FraudCheckTimeoutExpired(
+                                TransactionId: ctx.Saga.TransactionId,
+                                CorrelationId: ctx.Saga.CorrelationKey
+                            ),
+                            ctx => TimeSpan.FromSeconds(30 * (int)Math.Pow(2, ctx.Saga.RetryCount - 1))
+                        ),
                     giveup => giveup
                         .Then(ctx =>
                         {
                             ctx.Saga.TimedOutAtUtc = DateTime.UtcNow;
                             ctx.Saga.UpdatedAtUtc = DateTime.UtcNow;
                         })
+                        // Timeout final outcome: Rejected(TimedOut)
+                        .Publish(ctx => new TransactionRejected(
+                            TransactionId: ctx.Saga.TransactionId,
+                            RiskScore: ctx.Saga.RiskScore ?? 0,
+                            Reason: "TimedOut",
+                            Explanation: "Fraud check did not complete within allowed retries/timeouts.",
+                            CorrelationId: ctx.Saga.CorrelationKey,
+                            OccurredAtUtc: DateTime.UtcNow
+                        ))
                         .TransitionTo(TimedOut)
                         .Finalize()
                 )
