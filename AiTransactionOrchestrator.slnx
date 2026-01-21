@@ -2,6 +2,7 @@
   <Folder Name="/Solution Items/">
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
+    <File Path="docker-compose.yml" />
   </Folder>
   <Folder Name="/src/" />
   <Folder Name="/src/BuildingBlocks/">
@@ -11,5 +12,6 @@
     <Project Path="src/Transaction/Transaction.Api/Transaction.Api.csproj" />
     <Project Path="src/Transaction/Transaction.Application/Transaction.Application.csproj" />
     <Project Path="src/Transaction/Transaction.Domain/Transaction.Domain.csproj" />
+    <Project Path="src/Transaction/Transaction.Infrastructure/Transaction.Infrastructure.csproj" Id="4126e92c-258f-4919-80b7-0d23c02ddf08" />
   </Folder>
 </Solution>

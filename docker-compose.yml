@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: ato-postgres
+    environment:
+      POSTGRES_USER: ato
+      POSTGRES_PASSWORD: ato_pass
+      POSTGRES_DB: ato_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ato_pgdata:/var/lib/postgresql/data
+
+volumes:
+  ato_pgdata:
