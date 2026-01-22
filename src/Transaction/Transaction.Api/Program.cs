@@ -47,15 +47,13 @@ if (app.Environment.IsDevelopment())
 }
 
 
-app.MapPost("/transactions", async (CreateTransactionRequest req, ISender sender, IPublishEndpoint publish, CancellationToken ct) =>
+app.MapPost("/transactions", async (CreateTransactionRequest req, ISender sender, CancellationToken ct) =>
 {
     var correlationId = Guid.NewGuid().ToString();
 
     var id = await sender.Send(
         new CreateTransactionCommand(req.Amount, req.Currency, req.MerchantId, correlationId),
         ct);
-
-    await publish.Publish(new TransactionCreated(id, req.Amount, req.Currency, req.MerchantId, correlationId), ct);
 
     return Results.Created($"/transactions/{id}", new { transactionId = id, correlationId });
 });

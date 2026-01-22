@@ -7,38 +7,96 @@ namespace Transaction.Api.Outbox;
 
 public sealed class OutboxPublisherService(
     IServiceScopeFactory scopeFactory,
-    IPublishEndpoint publishEndpoint,
     ILogger<OutboxPublisherService> logger)
     : BackgroundService
 {
+    private const int BatchSize = 20;
+    private const int MaxAttempts = 10;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        var instanceId = $"api-{Environment.MachineName}-{Environment.ProcessId}";
+
         while (!stoppingToken.IsCancellationRequested)
         {
-            using var scope = scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<TransactionDbContext>();
-
-            var messages = await db.OutboxMessages
-                .Where(x => x.PublishedAtUtc == null)
-                .OrderBy(x => x.OccurredAtUtc)
-                .Take(20)
-                .ToListAsync(stoppingToken);
-
-            foreach (var msg in messages)
+            try
             {
-                var type = Type.GetType(msg.Type);
-                if (type is null) continue;
+                using var scope = scopeFactory.CreateScope();
 
-                var payload = System.Text.Json.JsonSerializer.Deserialize(msg.Payload, type);
-                if (payload is null) continue;
+                var db = scope.ServiceProvider.GetRequiredService<TransactionDbContext>();
+                var publish = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
+                var store = new OutboxStore(db);
 
-                await publishEndpoint.Publish(payload, stoppingToken);
+                var claimed = await store.ClaimBatchAsync(
+                    batchSize: BatchSize,
+                    lockedBy: instanceId,
+                    lockFor: TimeSpan.FromSeconds(30),
+                    ct: stoppingToken);
 
-                msg.MarkPublished();
+                if (claimed.Count == 0)
+                {
+                    await Task.Delay(750, stoppingToken);
+                    continue;
+                }
+
+                foreach (var row in claimed)
+                {
+                    await PublishOne(db,publish, row.Id, stoppingToken);
+                }
             }
-
-            await db.SaveChangesAsync(stoppingToken);
-            await Task.Delay(1000, stoppingToken);
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "OutboxPublisher loop failed");
+                await Task.Delay(1500, stoppingToken);
+            }
         }
+    }
+
+    private async Task PublishOne(TransactionDbContext db, IPublishEndpoint publish, Guid outboxId, CancellationToken ct)
+    {
+        var msg = await db.OutboxMessages.FirstOrDefaultAsync(x => x.Id == outboxId, ct);
+        if (msg is null) return;
+
+        try
+        {
+            var type = Type.GetType(msg.Type);
+            if (type is null)
+                throw new InvalidOperationException($"Cannot resolve message type: {msg.Type}");
+
+            var payload = System.Text.Json.JsonSerializer.Deserialize(msg.Payload, type);
+            if (payload is null)
+                throw new InvalidOperationException("Cannot deserialize outbox payload.");
+
+            await publish.Publish(payload, ct);
+
+            msg.MarkPublished();
+            await db.SaveChangesAsync(ct);
+
+            logger.LogInformation("Outbox published. OutboxId={OutboxId} CorrelationId={CorrelationId}",
+                msg.Id, msg.CorrelationId);
+        }
+        catch (Exception ex)
+        {
+            var next = ComputeNextAttemptUtc(msg.AttemptCount + 1);
+            msg.MarkFailed(ex.ToString(), next, MaxAttempts);
+
+            await db.SaveChangesAsync(ct);
+
+            logger.LogWarning(ex,
+                "Outbox publish failed. OutboxId={OutboxId} Attempt={Attempt} NextAttemptAtUtc={NextAttemptAtUtc}",
+                msg.Id, msg.AttemptCount, msg.NextAttemptAtUtc);
+        }
+    }
+
+    private static DateTime ComputeNextAttemptUtc(int attempt)
+    {
+        // Exponential backoff with cap + small jitter
+        var baseSeconds = Math.Min(60 * 10, (int)Math.Pow(2, Math.Min(10, attempt))); // cap
+        var jitter = Random.Shared.Next(0, 500); // ms
+        return DateTime.UtcNow.AddSeconds(baseSeconds).AddMilliseconds(jitter);
     }
 }
