@@ -9,7 +9,6 @@ public sealed class TransactionRepository(TransactionDbContext db) : ITransactio
     public async Task Add(Transaction.Domain.Transactions.Transaction transaction, CancellationToken ct = default)
     {
         await db.Transactions.AddAsync(transaction, ct);
-        await db.SaveChangesAsync(ct);
     }
 
     public Task<Transaction.Domain.Transactions.Transaction?> Get(Guid id, CancellationToken ct = default)
@@ -17,7 +16,7 @@ public sealed class TransactionRepository(TransactionDbContext db) : ITransactio
         return db.Transactions
             .AsTracking()
             .FirstOrDefaultAsync(x => x.Id == id, ct);
-    }
+    }    
 
     public async Task Save(Transaction.Domain.Transactions.Transaction transaction, CancellationToken ct = default)
     {

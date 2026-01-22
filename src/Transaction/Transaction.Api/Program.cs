@@ -1,9 +1,10 @@
+using BuildingBlocks.Contracts.Transactions;
+using MassTransit;
 using MediatR;
+using Transaction.Api.Outbox;
 using Transaction.Application.Abstractions;
 using Transaction.Application.Transactions;
 using Transaction.Infrastructure;
-using MassTransit;
-using BuildingBlocks.Contracts.Transactions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +34,8 @@ builder.Services.AddMassTransit(x =>
         });
     });
 });
+
+builder.Services.AddHostedService<OutboxPublisherService>();
 
 var app = builder.Build();
 

@@ -1,30 +1,32 @@
 ﻿using BuildingBlocks.Contracts.Transactions;
 using MassTransit;
-using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using Transaction.Application.Abstractions;
+using Transaction.Infrastructure.Inbox;
+using Transaction.Infrastructure.Persistence;
 
 namespace Transaction.Updater.Worker.Consumers;
 
 public sealed class TransactionRejectedConsumer(
     ITransactionRepository repo,
+    TransactionDbContext db,
+    IUnitOfWork uow,
     ILogger<TransactionRejectedConsumer> logger)
     : IConsumer<TransactionRejected>
 {
     public async Task Consume(ConsumeContext<TransactionRejected> context)
     {
-        var msg = context.Message;
+        var messageId = context.MessageId ?? Guid.NewGuid();
 
-        var tx = await repo.Get(msg.TransactionId, context.CancellationToken);
-        if (tx is null)
-        {
-            logger.LogWarning("Transaction not found for rejection. TxId={TransactionId}", msg.TransactionId);
-            return;
-        }
+        if (await db.InboxMessages.AnyAsync(x => x.MessageId == messageId))
+            return; // duplicate
 
-        tx.MarkRejected(msg.RiskScore, msg.Reason, msg.Explanation);
-        await repo.Save(tx, context.CancellationToken);
+        db.InboxMessages.Add(new InboxMessage(messageId));
 
-        logger.LogInformation("Transaction rejected updated in DB. TxId={TransactionId} Reason={Reason} CorrelationId={CorrelationId}",
-            msg.TransactionId, msg.Reason, msg.CorrelationId);
+        var tx = await repo.Get(context.Message.TransactionId, context.CancellationToken);
+        if (tx is null) return;
+
+        tx.MarkRejected(context.Message.RiskScore, context.Message.Reason, context.Message.Explanation);
+        await uow.SaveChangesAsync(context.CancellationToken);
     }
 }
