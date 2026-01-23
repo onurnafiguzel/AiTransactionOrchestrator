@@ -1,7 +1,25 @@
+using Fraud.Worker.AI;
 using Fraud.Worker.Consumers;
 using MassTransit;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.AddScoped<FallbackFraudExplanationGenerator>();
+
+//builder.Services.AddScoped<IFraudExplanationGenerator>(sp =>
+//{
+//    return sp.GetRequiredService<OpenAiFraudExplanationGenerator>();
+//});
+
+builder.Services.AddScoped<IFraudExplanationGenerator, LlmFraudExplanationGenerator>();
+
+builder.Services.Configure<FraudExplanationOptions>(
+    builder.Configuration.GetSection("FraudExplanation"));
+
+builder.Services.AddHttpClient<OpenAiFraudExplanationGenerator>(c =>
+{
+    c.Timeout = Timeout.InfiniteTimeSpan; // timeout'u biz CTS ile yönetiyoruz
+});
 
 builder.Services.AddMassTransit(x =>
 {

@@ -28,6 +28,8 @@
 		<PackageVersion Include="MassTransit.Quartz" Version="8.1.2" />
 		<PackageVersion Include="Quartz.Extensions.Hosting" Version="3.15.1" />
 
+		<!-- HTTP Client Factory -->
+		<PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.2" />
 
 	</ItemGroup>
 </Project>
