@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using Npgsql;
+using System.Transactions;
 
 namespace Support.Bot.Data;
 
@@ -57,6 +58,52 @@ public sealed class SupportReadRepository(string connectionString)
 
         return rows.ToList();
     }
+
+    public async Task<IncidentCountsRow> GetIncidentCounts(DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    {
+        await using var conn = new NpgsqlConnection(connectionString);
+
+        //TransactionStatus.Rejected = 4
+        //TransactionStatus.Approved = 3
+
+        const string sql = """
+                            select
+                                count(*)::int as total,
+                                sum(case when status = '3' then 1 else 0 end)::int as approved,
+                                sum(case when status = '4' then 1 else 0 end)::int as rejected,
+                                sum(case when status = '4' and decision_reason = 'TimedOut' then 1 else 0 end)::int as timedout
+                            from transactions
+                            where updated_at_utc >= @fromUtc and updated_at_utc < @toUtc;
+                            """;
+
+        return await conn.QuerySingleAsync<IncidentCountsRow>(
+            new CommandDefinition(sql, new { fromUtc, toUtc }, cancellationToken: ct));
+    }
+
+    public async Task<IReadOnlyList<MerchantTimeoutRow>> GetTopMerchantsByTimedOut(DateTime fromUtc, DateTime toUtc, int limit, CancellationToken ct)
+    {
+        await using var conn = new NpgsqlConnection(connectionString);
+
+        //TransactionStatus.Rejected = 4
+        const string sql = @"""
+                            select
+                                merchant_id as merchantId,
+                                count(*)::int as timedOutCount
+                            from transactions
+                            where updated_at_utc >= @fromUtc and updated_at_utc < @toUtc
+                              and status = '{4}'
+                              and decision_reason = 'TimedOut'
+                              and merchant_id is not null
+                            group by merchant_id
+                            order by timedOutCount desc
+                            limit @limit;
+                            """;
+
+        var rows = await conn.QueryAsync<MerchantTimeoutRow>(
+            new CommandDefinition(sql, new { fromUtc, toUtc, limit }, cancellationToken: ct));
+
+        return rows.ToList();
+    }
 }
 
 public sealed record TransactionRow(
@@ -78,3 +125,7 @@ public sealed record SagaRow(
 );
 
 public sealed record TimelineRow(string Event_Type, string? Details_Json, DateTime Occurred_At_Utc, string? Source);
+
+public sealed record IncidentCountsRow(int Total, int Approved, int Rejected, int TimedOut);
+
+public sealed record MerchantTimeoutRow(string MerchantId, int TimedOutCount);

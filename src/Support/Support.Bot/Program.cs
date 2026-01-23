@@ -45,6 +45,7 @@ app.MapGet("/support/transactions/{transactionId:guid}", async (
     var timeline = timelineRows
         .Select(x => new SupportTimelineItem(
             EventType: x.Event_Type,
+            DisplayMessage: TimelineDisplayMessageBuilder.Build(x.Event_Type, x.Details_Json),
             DetailsJson: x.Details_Json,
             OccurredAtUtc: x.Occurred_At_Utc,
             Source: x.Source))
@@ -69,4 +70,42 @@ app.MapGet("/support/transactions/{transactionId:guid}", async (
     return Results.Ok(report);
 });
 
+app.MapGet("/support/incidents/summary", async (
+    int? minutes,
+    SupportReadRepository repo,
+    CancellationToken ct) =>
+{
+    var windowMinutes = Math.Clamp(minutes ?? 15, 1, 24 * 60);
+
+    var toUtc = DateTime.UtcNow;
+    var fromUtc = toUtc.AddMinutes(-windowMinutes);
+
+    var counts = await repo.GetIncidentCounts(fromUtc, toUtc, ct);
+
+    IReadOnlyList<MerchantTimeoutStat> topMerchants = Array.Empty<MerchantTimeoutStat>();
+    try
+    {
+        var rows = await repo.GetTopMerchantsByTimedOut(fromUtc, toUtc, limit: 5, ct);
+        topMerchants = rows.Select(x => new MerchantTimeoutStat(x.MerchantId, x.TimedOutCount)).ToList();
+    }
+    catch
+    {
+        topMerchants = Array.Empty<MerchantTimeoutStat>();
+    }
+
+    var timeoutRate = counts.Total == 0
+        ? 0m
+        : Math.Round((decimal)counts.TimedOut / counts.Total, 4);
+
+    return Results.Ok(new IncidentSummary(
+        WindowMinutes: windowMinutes,
+        FromUtc: fromUtc,
+        ToUtc: toUtc,
+        TotalTransactions: counts.Total,
+        ApprovedCount: counts.Approved,
+        RejectedCount: counts.Rejected,
+        TimedOutCount: counts.TimedOut,
+        TimeoutRate: timeoutRate,
+        TopMerchantsByTimeout: topMerchants));
+});
 app.Run();
