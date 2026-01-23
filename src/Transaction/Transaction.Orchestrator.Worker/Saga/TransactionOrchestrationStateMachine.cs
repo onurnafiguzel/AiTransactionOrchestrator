@@ -145,6 +145,5 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                 )
         );
 
-        SetCompletedWhenFinalized();
     }
 }

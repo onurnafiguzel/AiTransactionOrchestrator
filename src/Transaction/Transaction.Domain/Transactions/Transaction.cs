@@ -16,6 +16,12 @@ public sealed class Transaction : AggregateRoot
     public DateTime CreatedAtUtc { get; private set; }
     public DateTime UpdatedAtUtc { get; private set; }
 
+    // Support properties for fraud decision
+    public int? RiskScore { get; private set; }
+    public string? DecisionReason { get; private set; }
+    public string? Explanation { get; private set; }
+    public DateTime? LastDecidedAtUtc { get; private set; }
+
     private Transaction() { } // ORM için; şimdi kullanılmıyor ama DDD’de standart
 
     // CREATE
@@ -89,6 +95,12 @@ public sealed class Transaction : AggregateRoot
 
         Status = TransactionStatus.Approved;
         UpdatedAtUtc = DateTime.UtcNow;
+
+        // Support properties
+        RiskScore = riskScore;
+        DecisionReason = null;
+        Explanation = explanation;
+        LastDecidedAtUtc = DateTime.UtcNow;
     }
 
     public void MarkRejected(int riskScore, string reason, string explanation)
@@ -97,6 +109,12 @@ public sealed class Transaction : AggregateRoot
 
         Status = TransactionStatus.Rejected;
         UpdatedAtUtc = DateTime.UtcNow;
+
+        // Support properties
+        RiskScore = riskScore;
+        DecisionReason = reason;
+        Explanation = explanation;
+        LastDecidedAtUtc = DateTime.UtcNow;
     }
 
     private void EnsureNotDeleted()

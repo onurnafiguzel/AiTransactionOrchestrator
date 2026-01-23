@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Transaction.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Transaction.Infrastructure.Persistence;
 namespace Transaction.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TransactionDbContext))]
-    partial class TransactionDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260123084430_BootFields")]
+    partial class BootFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -44,21 +47,18 @@ namespace Transaction.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("DecisionReason")
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("decision_reason");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("Explanation")
                         .HasMaxLength(4096)
-                        .HasColumnType("character varying(4096)")
-                        .HasColumnName("explanation");
+                        .HasColumnType("character varying(4096)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
                     b.Property<DateTime?>("LastDecidedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_decided_at_utc");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("MerchantId")
                         .IsRequired()
@@ -67,8 +67,7 @@ namespace Transaction.Infrastructure.Persistence.Migrations
                         .HasColumnName("merchant_id");
 
                     b.Property<int?>("RiskScore")
-                        .HasColumnType("integer")
-                        .HasColumnName("risk_score");
+                        .HasColumnType("integer");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")

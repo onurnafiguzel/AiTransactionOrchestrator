@@ -11,6 +11,9 @@
   <Folder Name="/src/Fraud/">
     <Project Path="src/Fraud/Fraud.Worker/Fraud.Worker.csproj" Id="8c55f2e7-2c3f-457b-a87d-f3f1012237d8" />
   </Folder>
+  <Folder Name="/src/Support/">
+    <Project Path="src/Support/Support.Bot/Support.Bot.csproj" Id="9f8bf7c1-5a15-409c-a99c-88942ea05176" />
+  </Folder>
   <Folder Name="/src/Transaction/">
     <Project Path="src/Transaction/Transaction.Api/Transaction.Api.csproj" />
     <Project Path="src/Transaction/Transaction.Application/Transaction.Application.csproj" />

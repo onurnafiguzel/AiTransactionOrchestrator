@@ -43,6 +43,20 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
             .HasColumnName("updated_at_utc")
             .IsRequired();
 
+        b.Property(x => x.RiskScore)
+            .HasColumnName("risk_score");
+
+        b.Property(x => x.DecisionReason)
+            .HasColumnName("decision_reason")
+            .HasMaxLength(256);
+
+        b.Property(x => x.Explanation)
+            .HasColumnName("explanation")
+            .HasMaxLength(4096);
+
+        b.Property(x => x.LastDecidedAtUtc)
+            .HasColumnName("last_decided_at_utc");
+
         // DomainEvents EF tarafından persist edilmesin
         b.Ignore(x => x.DomainEvents);
     }

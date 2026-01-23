@@ -34,6 +34,7 @@ public sealed class TransactionApprovedConsumer(
         }
 
         tx.MarkApproved(context.Message.RiskScore, context.Message.Explanation);
+        await repo.Save(tx, context.CancellationToken);
         await uow.SaveChangesAsync(context.CancellationToken);
     }
 }
