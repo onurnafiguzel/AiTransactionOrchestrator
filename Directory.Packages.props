@@ -34,7 +34,7 @@
 		<!-- Dapper -->
 		<PackageVersion Include="Dapper" Version="2.1.66" />
 		<!-- Npgsql -->
-		<PackageVersion Include="Npgsql" Version="10.0.1" />
+		<PackageVersion Include="Npgsql" Version="8.0.8" />
 		
 		
 

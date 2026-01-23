@@ -7,5 +7,6 @@ public sealed record SupportTransactionReport(
     string Summary,
     string? Explanation,
     SupportSagaInfo Saga,
+    IReadOnlyList<SupportTimelineItem> Timeline,
     DateTime GeneratedAtUtc
 );

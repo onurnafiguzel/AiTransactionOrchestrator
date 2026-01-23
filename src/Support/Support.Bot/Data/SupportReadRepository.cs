@@ -39,6 +39,24 @@ public sealed class SupportReadRepository(string connectionString)
 
         return await conn.QuerySingleOrDefaultAsync<SagaRow>(new CommandDefinition(sql, new { transactionId }, cancellationToken: ct));
     }
+
+    public async Task<IReadOnlyList<TimelineRow>> GetTimeline(Guid transactionId, int limit, CancellationToken ct)
+    {
+        await using var conn = new NpgsqlConnection(connectionString);
+
+        const string sql = """
+                            select event_type, details_json, occurred_at_utc, source
+                            from transaction_timeline
+                            where transaction_id = @transactionId
+                            order by occurred_at_utc desc
+                            limit @limit
+                            """;
+
+        var rows = await conn.QueryAsync<TimelineRow>(
+            new CommandDefinition(sql, new { transactionId, limit }, cancellationToken: ct));
+
+        return rows.ToList();
+    }
 }
 
 public sealed record TransactionRow(
@@ -58,3 +76,5 @@ public sealed record SagaRow(
     DateTime? timed_out_at_utc,
     string CorrelationKey
 );
+
+public sealed record TimelineRow(string Event_Type, string? Details_Json, DateTime Occurred_At_Utc, string? Source);

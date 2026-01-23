@@ -1,8 +1,10 @@
 ﻿using BuildingBlocks.Contracts.Transactions;
 using MassTransit;
+using System;
 using Transaction.Application.Abstractions;
 using Transaction.Infrastructure.Inbox;
 using Transaction.Infrastructure.Persistence;
+using Transaction.Updater.Worker.Timeline;
 
 namespace Transaction.Updater.Worker.Consumers;
 
@@ -10,6 +12,7 @@ public sealed class TransactionApprovedConsumer(
     ITransactionRepository repo,
     TransactionDbContext db,
     InboxGuard guard,
+    TimelineWriter timeline,
     IUnitOfWork uow,
     ILogger<TransactionApprovedConsumer> logger)
     : IConsumer<TransactionApproved>
@@ -35,6 +38,15 @@ public sealed class TransactionApprovedConsumer(
 
         tx.MarkApproved(context.Message.RiskScore, context.Message.Explanation);
         await repo.Save(tx, context.CancellationToken);
+
+        await timeline.Append(
+                transactionId: context.Message.TransactionId,
+                eventType: "TransactionApproved",
+                detailsJson: $"{{\"riskScore\":{context.Message.RiskScore}}}",
+                correlationId: context.Message.CorrelationId,
+                source: "transaction-updater",
+                ct: context.CancellationToken);
+
         await uow.SaveChangesAsync(context.CancellationToken);
     }
 }

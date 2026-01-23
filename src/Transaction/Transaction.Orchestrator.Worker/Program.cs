@@ -13,6 +13,8 @@ var rabbitPass = builder.Configuration["RabbitMq:Password"] ?? "admin";
 var sagaCs = builder.Configuration.GetConnectionString("SagaDb")
             ?? "Host=localhost;Port=5432;Database=ato_db;Username=ato;Password=ato_pass";
 
+builder.Services.AddSingleton(new Transaction.Orchestrator.Worker.Timeline.TimelineWriter(sagaCs));
+
 builder.Services.AddDbContext<OrchestratorSagaDbContext>(opt =>
 {
     opt.UseNpgsql(sagaCs);

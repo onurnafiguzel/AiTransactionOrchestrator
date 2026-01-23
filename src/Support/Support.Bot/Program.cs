@@ -40,6 +40,16 @@ app.MapGet("/support/transactions/{transactionId:guid}", async (
         retryCount: saga?.retry_Count ?? 0,
         timedOutAtUtc: saga?.timed_out_at_utc);
 
+    var timelineRows = await repo.GetTimeline(transactionId, limit: 50, ct);
+
+    var timeline = timelineRows
+        .Select(x => new SupportTimelineItem(
+            EventType: x.Event_Type,
+            DetailsJson: x.Details_Json,
+            OccurredAtUtc: x.Occurred_At_Utc,
+            Source: x.Source))
+        .ToList();
+
     var explanation = (string?)null;
 
     var report = new SupportTransactionReport(
@@ -53,6 +63,7 @@ app.MapGet("/support/transactions/{transactionId:guid}", async (
             RetryCount: saga?.retry_Count ?? 0,
             TimedOutAtUtc: saga?.timed_out_at_utc,
             CorrelationId: saga?.CorrelationKey),
+         Timeline: timeline,
         GeneratedAtUtc: DateTime.UtcNow);
 
     return Results.Ok(report);

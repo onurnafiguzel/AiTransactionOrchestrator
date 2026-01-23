@@ -9,6 +9,8 @@ var cs = builder.Configuration.GetConnectionString("TransactionDb")
 
 builder.Services.AddTransactionInfrastructure(cs);
 
+builder.Services.AddSingleton(new Transaction.Updater.Worker.Timeline.TimelineWriter(cs));
+
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<TransactionApprovedConsumer>();
