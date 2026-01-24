@@ -30,13 +30,19 @@
 
 		<!-- HTTP Client Factory -->
 		<PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.2" />
-		
+
 		<!-- Dapper -->
 		<PackageVersion Include="Dapper" Version="2.1.66" />
 		<!-- Npgsql -->
 		<PackageVersion Include="Npgsql" Version="8.0.8" />
 		
-		
+		<!-- Serilog -->
+		<PackageVersion Include="Serilog.AspNetCore" Version="8.0.0" />
+		<PackageVersion Include="Serilog.Sinks.Elasticsearch" Version="9.0.3" />
+		<PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+		<PackageVersion Include="Serilog.Enrichers.Process" Version="3.0.0" />
+		<PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+
 
 	</ItemGroup>
 </Project>

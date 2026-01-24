@@ -1,8 +1,16 @@
 using Fraud.Worker.AI;
 using Fraud.Worker.Consumers;
 using MassTransit;
+using Serilog;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+builder.Logging.ClearProviders();
+
+builder.Services.AddSerilog((sp, lc) =>
+    lc.ReadFrom.Configuration(builder.Configuration)
+      .ReadFrom.Services(sp)
+      .Enrich.FromLogContext());
 
 builder.Services.AddScoped<FallbackFraudExplanationGenerator>();
 

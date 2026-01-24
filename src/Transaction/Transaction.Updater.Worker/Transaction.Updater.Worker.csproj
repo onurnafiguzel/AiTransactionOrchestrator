@@ -8,6 +8,13 @@
 	  <PackageReference Include="MassTransit.RabbitMQ" />
 
 	  <PackageReference Include="Npgsql" />
+
+	  <PackageReference Include="Serilog.AspNetCore" />
+	  <PackageReference Include="Serilog.Sinks.Elasticsearch"  />
+	  <PackageReference Include="Serilog.Enrichers.Environment" />
+	  <PackageReference Include="Serilog.Enrichers.Process" />
+	  <PackageReference Include="Serilog.Enrichers.Thread" />
+	  
   </ItemGroup>
 
  

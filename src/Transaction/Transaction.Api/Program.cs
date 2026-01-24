@@ -1,6 +1,6 @@
-using BuildingBlocks.Contracts.Transactions;
 using MassTransit;
 using MediatR;
+using Serilog;
 using Transaction.Api.Outbox;
 using Transaction.Application.Abstractions;
 using Transaction.Application.Transactions;
@@ -8,8 +8,9 @@ using Transaction.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Host.UseSerilog((ctx, lc) =>
+    lc.ReadFrom.Configuration(ctx.Configuration));
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

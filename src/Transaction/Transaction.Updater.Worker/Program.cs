@@ -1,8 +1,14 @@
 using MassTransit;
+using Serilog;
 using Transaction.Infrastructure;
 using Transaction.Updater.Worker.Consumers;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.AddSerilog((sp, lc) =>
+    lc.ReadFrom.Configuration(builder.Configuration)
+      .ReadFrom.Services(sp)
+      .Enrich.FromLogContext());
 
 var cs = builder.Configuration.GetConnectionString("TransactionDb")
          ?? "Host=localhost;Port=5432;Database=ato_db;Username=ato;Password=ato_pass";

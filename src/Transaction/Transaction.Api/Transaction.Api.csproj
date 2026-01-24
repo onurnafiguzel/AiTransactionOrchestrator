@@ -7,14 +7,19 @@
 
 		<PackageReference Include="MassTransit" />
 		<PackageReference Include="MassTransit.RabbitMQ" />
-		
+
+		<PackageReference Include="Serilog.AspNetCore" />
+		<PackageReference Include="Serilog.Sinks.Elasticsearch"  />
+		<PackageReference Include="Serilog.Enrichers.Environment" />
+		<PackageReference Include="Serilog.Enrichers.Process" />
+		<PackageReference Include="Serilog.Enrichers.Thread" />
 
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
-	  <ProjectReference Include="..\Transaction.Application\Transaction.Application.csproj" />
-	  <ProjectReference Include="..\Transaction.Infrastructure\Transaction.Infrastructure.csproj" />
+		<ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+		<ProjectReference Include="..\Transaction.Application\Transaction.Application.csproj" />
+		<ProjectReference Include="..\Transaction.Infrastructure\Transaction.Infrastructure.csproj" />
 	</ItemGroup>
 
 </Project>
