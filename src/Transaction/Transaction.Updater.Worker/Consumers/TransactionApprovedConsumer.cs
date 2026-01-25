@@ -1,7 +1,6 @@
 ﻿using BuildingBlocks.Contracts.Observability;
 using BuildingBlocks.Contracts.Transactions;
 using MassTransit;
-using System;
 using Transaction.Application.Abstractions;
 using Transaction.Infrastructure.Inbox;
 using Transaction.Infrastructure.Persistence;

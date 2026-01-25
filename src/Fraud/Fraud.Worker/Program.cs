@@ -7,8 +7,6 @@ using Serilog;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Logging.ClearProviders();
-
 builder.Services.AddSerilog((sp, lc) =>
     lc.ReadFrom.Configuration(builder.Configuration)
       .ReadFrom.Services(sp)
@@ -52,6 +50,9 @@ builder.Services.AddMassTransit(x =>
         {
             e.ConfigureConsumer<FraudCheckRequestedConsumer>(context);
         });
+
+        cfg.UseConsumeFilter(typeof(CorrelationConsumeFilter<>), context);
+        cfg.UsePublishFilter(typeof(CorrelationPublishFilter<>), context);
     });
 });
 

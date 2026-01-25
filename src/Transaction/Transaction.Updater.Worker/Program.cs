@@ -42,6 +42,9 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<TransactionApprovedConsumer>(context);
             e.ConfigureConsumer<TransactionRejectedConsumer>(context);
         });
+
+        cfg.UseConsumeFilter(typeof(CorrelationConsumeFilter<>), context);
+        cfg.UsePublishFilter(typeof(CorrelationPublishFilter<>), context);
     });
 });
 

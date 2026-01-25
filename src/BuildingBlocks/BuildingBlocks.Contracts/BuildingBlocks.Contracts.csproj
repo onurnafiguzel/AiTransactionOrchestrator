@@ -6,5 +6,8 @@
 		<PackageReference Include="Serilog.Enrichers.Environment" />
 		<PackageReference Include="Serilog.Enrichers.Process" />
 		<PackageReference Include="Serilog.Enrichers.Thread" />
+
+		<PackageReference Include="MassTransit" />
+
 	</ItemGroup>
 </Project>

@@ -2,20 +2,18 @@
 using BuildingBlocks.Contracts.Observability;
 using BuildingBlocks.Contracts.Transactions;
 using MassTransit;
-using System;
 using System.Text.Json;
-using System.Threading;
 using Transaction.Orchestrator.Worker.Timeline;
 
 namespace Transaction.Orchestrator.Worker.Saga;
 
 public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachine<TransactionOrchestrationState>
 {
-    private readonly ILogger<TransactionOrchestrationStateMachine> _logger;
-
+    private readonly ILogger<TransactionOrchestrationStateMachine> logger;
     private readonly TimelineWriter timeline;
-
     private const int MaxRetry = 3;
+
+   
 
     public State Submitted { get; private set; } = default!;
     public State FraudRequested { get; private set; } = default!;
@@ -25,13 +23,15 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
     public Event<TransactionCreated> TransactionCreated { get; private set; } = default!;
     public Event<FraudCheckCompleted> FraudCheckCompleted { get; private set; } = default!;
 
-    // Timeout schedule
     public Schedule<TransactionOrchestrationState, FraudCheckTimeoutExpired> FraudTimeout { get; private set; } = default!;
 
-    public TransactionOrchestrationStateMachine(TimelineWriter timeline)
+    public TransactionOrchestrationStateMachine(
+        TimelineWriter timeline,
+        ILogger<TransactionOrchestrationStateMachine> logger)
         : base()
     {
         this.timeline = timeline;
+        this.logger = logger;
 
         Event(() => TransactionCreated, x =>
         {
@@ -44,12 +44,6 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
             x.CorrelateById(ctx => ctx.Message.TransactionId);
         });
 
-        //// Timeout event correlation (some setups still need this)
-        //Event(() => FraudTimeout.Received, x =>
-        //{
-        //    x.CorrelateById(ctx => ctx.Message.TransactionId);
-        //});
-
         Schedule(() => FraudTimeout, x => x.FraudTimeoutTokenId, s =>
         {
             s.Delay = TimeSpan.FromSeconds(30);
@@ -59,24 +53,33 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
 
         Initially(
             When(TransactionCreated)
-                        .Then(ctx =>
-                        {
-                            var cid = GetCorrelationId(ctx, ctx.Message.CorrelationId);
+                .Then(ctx =>
+                {
+                    var cid = GetCorrelationId(ctx, ctx.Message.CorrelationId);
 
-                            ctx.Saga.TransactionId = ctx.Message.TransactionId;
-                            ctx.Saga.Amount = ctx.Message.Amount;
-                            ctx.Saga.Currency = ctx.Message.Currency;
-                            ctx.Saga.MerchantId = ctx.Message.MerchantId;
+                    ctx.Saga.TransactionId = ctx.Message.TransactionId;
+                    ctx.Saga.Amount = ctx.Message.Amount;
+                    ctx.Saga.Currency = ctx.Message.Currency;
+                    ctx.Saga.MerchantId = ctx.Message.MerchantId;
 
-                            ctx.Saga.CorrelationKey = cid;
+                    ctx.Saga.CorrelationKey = cid;
 
-                            ctx.Saga.RetryCount = 0;
-                            ctx.Saga.CreatedAtUtc = DateTime.UtcNow;
-                            ctx.Saga.UpdatedAtUtc = DateTime.UtcNow;
-                        })
-                        .ThenAsync(ctx => WithCorrelationLogScope(ctx, async () =>
-                        {
-                            await AppendTimeline(
+                    ctx.Saga.RetryCount = 0;
+                    ctx.Saga.CreatedAtUtc = DateTime.UtcNow;
+                    ctx.Saga.UpdatedAtUtc = DateTime.UtcNow;
+
+                    using (BeginSagaScope(ctx))
+                    {
+                        logger.LogInformation(
+                            "Saga started | Transaction Id={TransactionId}",
+                            ctx.Saga.TransactionId);
+
+                        LogTransition(nameof(Initial), nameof(Submitted));
+                    }
+                })
+                .ThenAsync(ctx => WithSagaLogScope(ctx, async () =>
+                {
+                    await AppendTimeline(
                         ctx,
                         eventType: "TransactionCreated",
                         details: new
@@ -85,26 +88,36 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                             currency = ctx.Saga.Currency,
                             merchantId = ctx.Saga.MerchantId
                         });
-                        }))
-                        .TransitionTo(Submitted)
-                        .ThenAsync(async ctx =>
-                        {
-                            // Publish FraudCheckRequested + header
-                            var msg = new FraudCheckRequested(
+
+                    logger.LogInformation("Timeline appended | Event=TransactionCreated");
+                }))
+                .TransitionTo(Submitted)
+                .ThenAsync(async ctx =>
+                {
+                    var msg = new FraudCheckRequested(
                         TransactionId: ctx.Saga.TransactionId,
                         Amount: ctx.Saga.Amount,
                         Currency: ctx.Saga.Currency,
                         MerchantId: ctx.Saga.MerchantId,
                         CorrelationId: ctx.Saga.CorrelationKey);
 
-                            await ctx.Publish(msg, pub =>
+                    await ctx.Publish(msg, pub =>
                     {
                         pub.Headers.Set(Correlation.HeaderName, ctx.Saga.CorrelationKey);
                     });
-                        })
-                        .ThenAsync(ctx => WithCorrelationLogScope(ctx, async () =>
-                        {
-                            await AppendTimeline(
+
+                    using (BeginSagaScope(ctx))
+                    {
+                        logger.LogInformation(
+                            "Published FraudCheckRequested | Retry={Retry}",                            
+                            ctx.Saga.RetryCount);
+
+                        LogTransition(nameof(Submitted), nameof(FraudRequested));
+                    }
+                })
+                .ThenAsync(ctx => WithSagaLogScope(ctx, async () =>
+                {
+                    await AppendTimeline(
                         ctx,
                         eventType: "FraudCheckRequested",
                         details: new
@@ -114,13 +127,15 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                             merchantId = ctx.Saga.MerchantId,
                             retry = ctx.Saga.RetryCount
                         });
-                        }))
-                        .TransitionTo(FraudRequested)
-                        .Schedule(FraudTimeout, ctx => new FraudCheckTimeoutExpired(
-                            TransactionId: ctx.Saga.TransactionId,
-                            CorrelationId: ctx.Saga.CorrelationKey
-                        ))
-                );
+
+                    logger.LogInformation("Timeline appended | Event=FraudCheckRequested");
+                }))
+                .TransitionTo(FraudRequested)
+                .Schedule(FraudTimeout, ctx => new FraudCheckTimeoutExpired(
+                    TransactionId: ctx.Saga.TransactionId,
+                    CorrelationId: ctx.Saga.CorrelationKey
+                ))
+        );
 
         During(FraudRequested,
             When(FraudCheckCompleted)
@@ -128,15 +143,22 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                 .Then(ctx =>
                 {
                     var cid = GetCorrelationId(ctx, ctx.Message.CorrelationId);
-
                     if (string.IsNullOrWhiteSpace(ctx.Saga.CorrelationKey))
                         ctx.Saga.CorrelationKey = cid;
 
                     ctx.Saga.RiskScore = ctx.Message.RiskScore;
                     ctx.Saga.FraudExplanation = ctx.Message.Explanation;
                     ctx.Saga.UpdatedAtUtc = DateTime.UtcNow;
+
+                    using (BeginSagaScope(ctx))
+                    {
+                        logger.LogInformation(
+                            "FraudCheckCompleted received | Decision={Decision} | RiskScore={RiskScore}",
+                            ctx.Message.Decision,
+                            ctx.Message.RiskScore);
+                    }
                 })
-                .ThenAsync(ctx => WithCorrelationLogScope(ctx, async () =>
+                .ThenAsync(ctx => WithSagaLogScope(ctx, async () =>
                 {
                     await AppendTimeline(
                         ctx,
@@ -146,6 +168,8 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                             decision = ctx.Message.Decision.ToString(),
                             riskScore = ctx.Message.RiskScore
                         });
+
+                    logger.LogInformation("Timeline appended | Event=FraudCheckCompleted");
                 }))
                 .IfElse(ctx => ctx.Message.Decision == FraudDecision.Approve,
                     approved => approved
@@ -162,8 +186,17 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                             {
                                 pub.Headers.Set(Correlation.HeaderName, ctx.Saga.CorrelationKey);
                             });
+
+                            using (BeginSagaScope(ctx))
+                            {
+                                logger.LogInformation(
+                                    "Published TransactionApproved | RiskScore={RiskScore}",
+                                    ctx.Message.RiskScore);
+
+                                LogTransition(nameof(FraudRequested), nameof(Completed));
+                            }
                         })
-                        .ThenAsync(ctx => WithCorrelationLogScope(ctx, async () =>
+                        .ThenAsync(ctx => WithSagaLogScope(ctx, async () =>
                         {
                             await AppendTimeline(
                                 ctx,
@@ -172,9 +205,12 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                                 {
                                     riskScore = ctx.Message.RiskScore
                                 });
+
+                            logger.LogInformation("Timeline appended | Event=TransactionApproved");
                         }))
                         .TransitionTo(Completed)
                         .Finalize(),
+
                     rejected => rejected
                         .ThenAsync(async ctx =>
                         {
@@ -190,8 +226,19 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                             {
                                 pub.Headers.Set(Correlation.HeaderName, ctx.Saga.CorrelationKey);
                             });
+
+                            using (BeginSagaScope(ctx))
+                            {
+                                logger.LogInformation(
+                                    "Published TransactionRejected | Decision={Decision} | RiskScore={RiskScore}",
+                                    "FraudDecisionReject",
+                                    ctx.Message.Decision,
+                                    ctx.Message.RiskScore);
+
+                                LogTransition(nameof(FraudRequested), nameof(Completed));
+                            }
                         })
-                        .ThenAsync(ctx => WithCorrelationLogScope(ctx, async () =>
+                        .ThenAsync(ctx => WithSagaLogScope(ctx, async () =>
                         {
                             await AppendTimeline(
                                 ctx,
@@ -201,6 +248,8 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                                     reason = "FraudDecisionReject",
                                     riskScore = ctx.Message.RiskScore
                                 });
+
+                            logger.LogInformation("Timeline appended | Event=TransactionRejected");
                         }))
                         .TransitionTo(Completed)
                         .Finalize()
@@ -210,14 +259,21 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                 .Then(ctx =>
                 {
                     var cid = GetCorrelationId(ctx, ctx.Message.CorrelationId);
-
                     if (string.IsNullOrWhiteSpace(ctx.Saga.CorrelationKey))
                         ctx.Saga.CorrelationKey = cid;
 
                     ctx.Saga.RetryCount += 1;
                     ctx.Saga.UpdatedAtUtc = DateTime.UtcNow;
+
+                    using (BeginSagaScope(ctx))
+                    {
+                        logger.LogWarning(
+                            "Fraud timeout expired | Retry={Retry}",
+                            ctx.Saga.RetryCount,
+                            MaxRetry);
+                    }
                 })
-                .ThenAsync(ctx => WithCorrelationLogScope(ctx, async () =>
+                .ThenAsync(ctx => WithSagaLogScope(ctx, async () =>
                 {
                     await AppendTimeline(
                         ctx,
@@ -226,8 +282,11 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                         {
                             retry = ctx.Saga.RetryCount
                         });
+
+                    logger.LogInformation("Timeline appended | Event=FraudTimeoutExpired");
                 }))
                 .IfElse(ctx => ctx.Saga.RetryCount <= MaxRetry,
+
                     retry => retry
                         .ThenAsync(async ctx =>
                         {
@@ -242,8 +301,15 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                             {
                                 pub.Headers.Set(Correlation.HeaderName, ctx.Saga.CorrelationKey);
                             });
+
+                            using (BeginSagaScope(ctx))
+                            {
+                                logger.LogInformation(
+                                    "Retry publish FraudCheckRequested | Retry={Retry}",
+                                    ctx.Saga.RetryCount);
+                            }
                         })
-                        .ThenAsync(ctx => WithCorrelationLogScope(ctx, async () =>
+                        .ThenAsync(ctx => WithSagaLogScope(ctx, async () =>
                         {
                             await AppendTimeline(
                                 ctx,
@@ -255,6 +321,8 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                                     merchantId = ctx.Saga.MerchantId,
                                     retry = ctx.Saga.RetryCount
                                 });
+
+                            logger.LogInformation("Timeline appended | Event=FraudCheckRequested");
                         }))
                         .Schedule(FraudTimeout,
                             ctx => new FraudCheckTimeoutExpired(
@@ -263,18 +331,28 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                             ),
                             ctx => TimeSpan.FromSeconds(30 * (int)Math.Pow(2, ctx.Saga.RetryCount - 1))
                         ),
+
                     giveup => giveup
                         .Then(ctx =>
                         {
                             var cid = GetCorrelationId(ctx, null);
-
                             if (string.IsNullOrWhiteSpace(ctx.Saga.CorrelationKey))
                                 ctx.Saga.CorrelationKey = cid;
 
                             ctx.Saga.TimedOutAtUtc = DateTime.UtcNow;
                             ctx.Saga.UpdatedAtUtc = DateTime.UtcNow;
+
+                            using (BeginSagaScope(ctx))
+                            {
+                                logger.LogError(
+                                    "Saga timed out | Retry={Retry} | MaxRetry={MaxRetry}",
+                                    ctx.Saga.RetryCount,
+                                    MaxRetry);
+
+                                LogTransition(nameof(FraudRequested), nameof(TimedOut));
+                            }
                         })
-                        .ThenAsync(ctx => WithCorrelationLogScope(ctx, async () =>
+                        .ThenAsync(ctx => WithSagaLogScope(ctx, async () =>
                         {
                             await AppendTimeline(
                                 ctx,
@@ -284,6 +362,8 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                                     retry = ctx.Saga.RetryCount,
                                     maxRetry = MaxRetry
                                 });
+
+                            logger.LogInformation("Timeline appended | Event=TransactionTimedOut");
                         }))
                         .ThenAsync(async ctx =>
                         {
@@ -299,8 +379,15 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                             {
                                 pub.Headers.Set(Correlation.HeaderName, ctx.Saga.CorrelationKey);
                             });
+
+                            using (BeginSagaScope(ctx))
+                            {
+                                logger.LogInformation(
+                                    "Published TransactionRejected | Reason={Reason}",
+                                    "TimedOut");
+                            }
                         })
-                        .ThenAsync(ctx => WithCorrelationLogScope(ctx, async () =>
+                        .ThenAsync(ctx => WithSagaLogScope(ctx, async () =>
                         {
                             await AppendTimeline(
                                 ctx,
@@ -310,6 +397,8 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                                     reason = "TimedOut",
                                     riskScore = ctx.Saga.RiskScore ?? 0
                                 });
+
+                            logger.LogInformation("Timeline appended | Event=TransactionRejected");
                         }))
                         .TransitionTo(TimedOut)
                         .Finalize()
@@ -341,7 +430,6 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
         string? messageCorrelationIdFallback)
         where T : class
     {
-        // 1) Header'dan al (OutboxPublisherService burada basıyor)
         if (ctx.TryGetPayload<ConsumeContext>(out var consumeCtx))
         {
             var headerCid = consumeCtx.Headers.Get<string>(Correlation.HeaderName);
@@ -351,7 +439,6 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                 return headerCid;
             }
 
-            // 2) MassTransit CorrelationId (Guid)
             if (consumeCtx.CorrelationId.HasValue)
             {
                 var mtCid = consumeCtx.CorrelationId.Value.ToString("N");
@@ -360,51 +447,56 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
             }
         }
 
-        // 3) Message body fallback
         if (!string.IsNullOrWhiteSpace(messageCorrelationIdFallback))
         {
             CorrelationContext.CorrelationId = messageCorrelationIdFallback;
             return messageCorrelationIdFallback;
         }
 
-        // 4) Generate
         var newCid = Guid.NewGuid().ToString("N");
         CorrelationContext.CorrelationId = newCid;
         return newCid;
     }
 
-    private static Task WithCorrelationLogScope<T>(
-        BehaviorContext<TransactionOrchestrationState, T> ctx,
-        Func<Task> action)
+    private Task WithSagaLogScope<T>(BehaviorContext<TransactionOrchestrationState, T> ctx, Func<Task> action)
         where T : class
     {
         var cid = string.IsNullOrWhiteSpace(ctx.Saga.CorrelationKey)
             ? GetCorrelationId(ctx, null)
             : ctx.Saga.CorrelationKey;
 
-        using (Serilog.Context.LogContext.PushProperty("transaction_id", ctx.Saga.TransactionId))
-        using (Serilog.Context.LogContext.PushProperty("state", ctx.Saga.CurrentState))
+        // correlation_id zaten global enricher ile basılıyor; burada ekstra bağlam ekliyoruz
+        using (logger.BeginScope(new Dictionary<string, object>
+        {
+            ["correlation_id"] = cid,
+            ["transaction_id"] = ctx.Saga.TransactionId,
+            ["state"] = ctx.Saga.CurrentState
+        }))
         {
             return action();
         }
     }
 
     // -------------------------------------------------
-    // LOGGING HELPERS
+    // LOGGING HELPERS (sample-style)
     // -------------------------------------------------
-    private IDisposable BeginSagaScope(BehaviorContext<TransactionOrchestrationState> ctx)
+    private IDisposable BeginSagaScope<T>(BehaviorContext<TransactionOrchestrationState, T> ctx)
+        where T : class
     {
-        return _logger.BeginScope(new Dictionary<string, object>
+        var cid = string.IsNullOrWhiteSpace(ctx.Saga.CorrelationKey)
+            ? GetCorrelationId(ctx, null)
+            : ctx.Saga.CorrelationKey;
+
+        return logger.BeginScope(new Dictionary<string, object>
         {
-            ["CorrelationId"] = ctx.Instance.CorrelationId
+            ["correlation_id"] = cid,
+            ["transaction_id"] = ctx.Saga.TransactionId,
+            ["state"] = ctx.Saga.CurrentState
         });
     }
 
     private void LogTransition(string from, string to)
     {
-        _logger.LogInformation(
-            "Saga transition | {From} -> {To}",
-            from,
-            to);
+        logger.LogInformation("Saga transition | {From} -> {To}", from, to);
     }
 }

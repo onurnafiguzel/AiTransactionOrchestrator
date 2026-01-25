@@ -45,6 +45,9 @@ builder.Services.AddMassTransit(x =>
             h.Username(user);
             h.Password(pass);
         });
+
+        cfg.UseConsumeFilter(typeof(CorrelationConsumeFilter<>), context);
+        cfg.UsePublishFilter(typeof(CorrelationPublishFilter<>), context);
     });
 });
 

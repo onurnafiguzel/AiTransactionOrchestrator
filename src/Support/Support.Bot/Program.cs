@@ -24,7 +24,6 @@ builder.Services.AddSingleton(new SupportReadRepository(cs));
 
 builder.Services.AddHostedService<HealthEndpointHostedService>();
 
-
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
