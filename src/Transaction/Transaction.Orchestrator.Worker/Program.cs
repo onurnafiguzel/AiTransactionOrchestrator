@@ -1,7 +1,9 @@
-﻿using MassTransit;
+﻿using BuildingBlocks.Observability;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 using Serilog;
+using Transaction.Orchestrator.Worker.Health;
 using Transaction.Orchestrator.Worker.Persistence;
 using Transaction.Orchestrator.Worker.Saga;
 
@@ -10,7 +12,8 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddSerilog((sp, lc) =>
     lc.ReadFrom.Configuration(builder.Configuration)
       .ReadFrom.Services(sp)
-      .Enrich.FromLogContext());
+      .Enrich.FromLogContext()
+      .Enrich.With<CorrelationIdEnricher>());
 
 var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
 var rabbitUser = builder.Configuration["RabbitMq:Username"] ?? "admin";
@@ -64,6 +67,8 @@ builder.Services.AddMassTransit(x =>
 builder.Services.AddQuartz();
 
 builder.Services.AddQuartzHostedService();
+
+builder.Services.AddHostedService<HealthEndpointHostedService>();
 
 var host = builder.Build();
 host.Run();

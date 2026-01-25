@@ -1,4 +1,5 @@
-﻿using BuildingBlocks.Contracts.Transactions;
+﻿using BuildingBlocks.Contracts.Observability;
+using BuildingBlocks.Contracts.Transactions;
 using MassTransit;
 using System;
 using Transaction.Application.Abstractions;
@@ -19,34 +20,48 @@ public sealed class TransactionApprovedConsumer(
 {
     public async Task Consume(ConsumeContext<TransactionApproved> context)
     {
-        Guid messageId = context.MessageId
-                         ?? context.CorrelationId
-                         ?? Guid.NewGuid();
+        var messageId = context.MessageId ?? context.CorrelationId ?? NewId.NextGuid();
 
-        if (!await guard.TryBeginAsync(messageId, context.CancellationToken))
+        var cid =
+            context.Headers.Get<string>(Correlation.HeaderName)
+            ?? context.CorrelationId?.ToString("N")
+            ?? context.Message.CorrelationId
+            ?? Guid.NewGuid().ToString("N");
+
+        CorrelationContext.CorrelationId = cid;
+
+        using (Serilog.Context.LogContext.PushProperty("message_id", messageId))
+        using (Serilog.Context.LogContext.PushProperty("transaction_id", context.Message.TransactionId))
         {
-            logger.LogInformation("Duplicate message ignored. MessageId={MessageId}", messageId);
-            return;
+
+            if (!await guard.TryBeginAsync(messageId, context.CancellationToken))
+            {
+                logger.LogInformation("Duplicate message ignored. MessageId={MessageId}", messageId);
+                return;
+            }
+
+            var tx = await repo.Get(context.Message.TransactionId, context.CancellationToken);
+            if (tx is null)
+            {
+                logger.LogWarning("Transaction not found. TxId={TransactionId}", context.Message.TransactionId);
+                return;
+            }
+
+            tx.MarkApproved(context.Message.RiskScore, context.Message.Explanation);
+            await repo.Save(tx, context.CancellationToken);
+
+            await timeline.Append(
+                    transactionId: context.Message.TransactionId,
+                    eventType: "TransactionApproved",
+                    detailsJson: $"{{\"riskScore\":{context.Message.RiskScore}}}",
+                    correlationId: context.Message.CorrelationId,
+                    source: "transaction-updater",
+                    ct: context.CancellationToken);
+
+            await uow.SaveChangesAsync(context.CancellationToken);
+
+            logger.LogInformation("Transaction approved updated in DB.");
         }
 
-        var tx = await repo.Get(context.Message.TransactionId, context.CancellationToken);
-        if (tx is null)
-        {
-            logger.LogWarning("Transaction not found. TxId={TransactionId}", context.Message.TransactionId);
-            return;
-        }
-
-        tx.MarkApproved(context.Message.RiskScore, context.Message.Explanation);
-        await repo.Save(tx, context.CancellationToken);
-
-        await timeline.Append(
-                transactionId: context.Message.TransactionId,
-                eventType: "TransactionApproved",
-                detailsJson: $"{{\"riskScore\":{context.Message.RiskScore}}}",
-                correlationId: context.Message.CorrelationId,
-                source: "transaction-updater",
-                ct: context.CancellationToken);
-
-        await uow.SaveChangesAsync(context.CancellationToken);
     }
 }

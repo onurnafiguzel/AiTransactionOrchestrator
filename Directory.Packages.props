@@ -43,6 +43,11 @@
 		<PackageVersion Include="Serilog.Enrichers.Process" Version="3.0.0" />
 		<PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
 
+		<!-- Health Checks -->
+		<PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="8.0.0" />
+		<PackageVersion Include="AspNetCore.HealthChecks.RabbitMQ" Version="8.0.0" />
+		<PackageVersion Include="Microsoft.AspNetCore.Diagnostics.HealthChecks" Version="2.2.0" />
+
 
 	</ItemGroup>
 </Project>

@@ -1,14 +1,17 @@
+using BuildingBlocks.Observability;
 using MassTransit;
 using Serilog;
 using Transaction.Infrastructure;
 using Transaction.Updater.Worker.Consumers;
+using Transaction.Updater.Worker.Health;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddSerilog((sp, lc) =>
     lc.ReadFrom.Configuration(builder.Configuration)
       .ReadFrom.Services(sp)
-      .Enrich.FromLogContext());
+      .Enrich.FromLogContext()
+      .Enrich.With<CorrelationIdEnricher>());
 
 var cs = builder.Configuration.GetConnectionString("TransactionDb")
          ?? "Host=localhost;Port=5432;Database=ato_db;Username=ato;Password=ato_pass";
@@ -41,6 +44,8 @@ builder.Services.AddMassTransit(x =>
         });
     });
 });
+
+builder.Services.AddHostedService<HealthEndpointHostedService>();
 
 var host = builder.Build();
 host.Run();

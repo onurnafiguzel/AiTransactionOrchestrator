@@ -1,5 +1,7 @@
+using BuildingBlocks.Observability;
 using Fraud.Worker.AI;
 using Fraud.Worker.Consumers;
+using Fraud.Worker.Health;
 using MassTransit;
 using Serilog;
 
@@ -10,7 +12,8 @@ builder.Logging.ClearProviders();
 builder.Services.AddSerilog((sp, lc) =>
     lc.ReadFrom.Configuration(builder.Configuration)
       .ReadFrom.Services(sp)
-      .Enrich.FromLogContext());
+      .Enrich.FromLogContext()
+      .Enrich.With<CorrelationIdEnricher>());
 
 builder.Services.AddScoped<FallbackFraudExplanationGenerator>();
 
@@ -51,6 +54,11 @@ builder.Services.AddMassTransit(x =>
         });
     });
 });
+
+builder.Services.AddHealthChecks()
+    .AddRabbitMQ(rabbitConnectionString: "amqp://admin:admin@localhost:5672", name: "rabbitmq");
+
+builder.Services.AddHostedService<HealthEndpointHostedService>();
 
 var host = builder.Build();
 host.Run();

@@ -71,13 +71,21 @@ public sealed class OutboxPublisherService(
             if (payload is null)
                 throw new InvalidOperationException("Cannot deserialize outbox payload.");
 
-            await publish.Publish(payload, ct);
+            await publish.Publish(payload, type, ctx =>
+            {
+                if (!string.IsNullOrWhiteSpace(msg.CorrelationId))
+                    ctx.Headers.Set(BuildingBlocks.Contracts.Observability.Correlation.HeaderName, msg.CorrelationId);
+
+                if (!string.IsNullOrWhiteSpace(msg.CorrelationId))
+                    ctx.Headers.Set("correlation_id", msg.CorrelationId);
+            }, ct);
 
             msg.MarkPublished();
             await db.SaveChangesAsync(ct);
 
-            logger.LogInformation("Outbox published. OutboxId={OutboxId} CorrelationId={CorrelationId}",
-                msg.Id, msg.CorrelationId);
+            logger.LogInformation("Outbox published. OutboxId={OutboxId}",
+                msg.Id);
+
         }
         catch (Exception ex)
         {

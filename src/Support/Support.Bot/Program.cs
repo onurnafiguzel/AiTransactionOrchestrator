@@ -1,13 +1,18 @@
+using BuildingBlocks.Observability;
 using Serilog;
 using Support.Bot.Contracts;
 using Support.Bot.Data;
+using Support.Bot.Health;
 using Support.Bot.Logic;
 using System.Transactions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog((ctx, lc) =>
-    lc.ReadFrom.Configuration(ctx.Configuration));
+builder.Services.AddSerilog((sp, lc) =>
+    lc.ReadFrom.Configuration(builder.Configuration)
+      .ReadFrom.Services(sp)
+      .Enrich.FromLogContext()
+      .Enrich.With<CorrelationIdEnricher>());
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -16,6 +21,9 @@ var cs = builder.Configuration.GetConnectionString("SupportDb")
          ?? "Host=localhost;Port=5432;Database=ato_db;Username=ato;Password=ato_pass";
 
 builder.Services.AddSingleton(new SupportReadRepository(cs));
+
+builder.Services.AddHostedService<HealthEndpointHostedService>();
+
 
 var app = builder.Build();
 
@@ -112,4 +120,5 @@ app.MapGet("/support/incidents/summary", async (
         TimeoutRate: timeoutRate,
         TopMerchantsByTimeout: topMerchants));
 });
+
 app.Run();

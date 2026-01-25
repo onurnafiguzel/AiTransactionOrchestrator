@@ -1,6 +1,9 @@
+using BuildingBlocks.Contracts.Observability;
+using BuildingBlocks.Observability;
 using MassTransit;
 using MediatR;
 using Serilog;
+using Transaction.Api.Middleware;
 using Transaction.Api.Outbox;
 using Transaction.Application.Abstractions;
 using Transaction.Application.Transactions;
@@ -8,8 +11,17 @@ using Transaction.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog((ctx, lc) =>
-    lc.ReadFrom.Configuration(ctx.Configuration));
+//builder.Host.UseSerilog((ctx, lc) =>
+//{
+//    lc.ReadFrom.Configuration(ctx.Configuration)
+//      .Enrich.With<CorrelationIdEnricher>();
+//});
+
+builder.Services.AddSerilog((sp, lc) =>
+    lc.ReadFrom.Configuration(builder.Configuration)
+      .ReadFrom.Services(sp)
+      .Enrich.FromLogContext()
+      .Enrich.With<CorrelationIdEnricher>());
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -38,9 +50,15 @@ builder.Services.AddMassTransit(x =>
 
 builder.Services.AddHostedService<OutboxPublisherService>();
 
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("TransactionDb")!)
+    .AddRabbitMQ(rabbitConnectionString: "amqp://admin:admin@localhost:5672");
+
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseMiddleware<CorrelationIdMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -48,9 +66,15 @@ if (app.Environment.IsDevelopment())
 }
 
 
-app.MapPost("/transactions", async (CreateTransactionRequest req, ISender sender, CancellationToken ct) =>
+app.MapPost("/transactions", async (
+    CreateTransactionRequest req,
+    ISender sender,
+    HttpContext http,
+    CancellationToken ct) =>
 {
-    var correlationId = Guid.NewGuid().ToString();
+    var correlationId =
+        CorrelationContext.CorrelationId
+        ?? (http.Request.Headers.TryGetValue(Correlation.HeaderName, out var v) ? v.ToString() : Guid.NewGuid().ToString("N"));
 
     var id = await sender.Send(
         new CreateTransactionCommand(req.Amount, req.Currency, req.MerchantId, correlationId),
@@ -76,6 +100,9 @@ app.MapGet("/transactions/{id:guid}", async (Guid id, ITransactionRepository rep
             tx.IsDeleted
         });
 });
+
+app.MapHealthChecks("/health/live");
+app.MapHealthChecks("/health/ready");
 
 app.UseHttpsRedirection();
 

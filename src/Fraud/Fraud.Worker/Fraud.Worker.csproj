@@ -8,10 +8,14 @@
 		<PackageReference Include="Microsoft.Extensions.Http" />
 
 		<PackageReference Include="Serilog.AspNetCore" />
-		<PackageReference Include="Serilog.Sinks.Elasticsearch"  />
+		<PackageReference Include="Serilog.Sinks.Elasticsearch" />
 		<PackageReference Include="Serilog.Enrichers.Environment" />
 		<PackageReference Include="Serilog.Enrichers.Process" />
 		<PackageReference Include="Serilog.Enrichers.Thread" />
+
+		<PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
+		<PackageReference Include="AspNetCore.HealthChecks.RabbitMQ" />
+		<PackageReference Include="Microsoft.AspNetCore.Diagnostics.HealthChecks" />
 		
 	</ItemGroup>
 
