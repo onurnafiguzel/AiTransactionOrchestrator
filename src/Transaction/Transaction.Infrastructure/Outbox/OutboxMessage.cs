@@ -57,12 +57,6 @@ public sealed class OutboxMessage
             FailedAtUtc = DateTime.UtcNow;
     }
 
-    public void MarkLocked(string lockedBy, DateTime lockedUntilUtc)
-    {
-        LockedBy = lockedBy;
-        LockedUntilUtc = lockedUntilUtc;
-    }
-
     private static string Truncate(string value, int max)
         => value.Length <= max ? value : value[..max];
 }

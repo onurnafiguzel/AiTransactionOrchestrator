@@ -11,9 +11,7 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
 {
     private readonly ILogger<TransactionOrchestrationStateMachine> logger;
     private readonly TimelineWriter timeline;
-    private const int MaxRetry = 3;
-
-   
+    private const int MaxRetry = 3;   
 
     public State Submitted { get; private set; } = default!;
     public State FraudRequested { get; private set; } = default!;
@@ -405,7 +403,7 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                 )
         );
 
-        SetCompletedWhenFinalized();
+        SetCompletedWhenFinalized(); // Kaydı tamamlanan saga örneklerini otomatik olarak sil
     }
 
     // ---- KEEP: AppendTimeline MUST NOT BE REMOVED ----

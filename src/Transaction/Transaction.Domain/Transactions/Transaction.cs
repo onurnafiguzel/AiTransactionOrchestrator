@@ -49,16 +49,6 @@ public sealed class Transaction : AggregateRoot
         return tx;
     }
 
-    // Domain behavior (ileride saga/worker ile çağrılacak)
-    public void MarkPendingFraudCheck()
-    {
-        EnsureNotDeleted();
-        EnsureMutable();
-
-        Status = TransactionStatus.PendingFraudCheck;
-        UpdatedAtUtc = DateTime.UtcNow;
-    }
-
     public void MarkApproved(int riskScore, string explanation)
     {
         if (IsDeleted) throw new InvalidOperationException("Transaction deleted.");
@@ -71,6 +61,8 @@ public sealed class Transaction : AggregateRoot
         DecisionReason = null;
         Explanation = explanation;
         LastDecidedAtUtc = DateTime.UtcNow;
+
+        RaiseDomainEvent(new TransactionStatusDomainEvent(Id));
     }
 
     public void MarkRejected(int riskScore, string reason, string explanation)
@@ -85,12 +77,8 @@ public sealed class Transaction : AggregateRoot
         DecisionReason = reason;
         Explanation = explanation;
         LastDecidedAtUtc = DateTime.UtcNow;
+
+        RaiseDomainEvent(new TransactionStatusDomainEvent(Id));
     }
 
-    private void EnsureNotDeleted()
-        => Guard.Against(IsDeleted, "Transaction is deleted.");
-
-    private void EnsureMutable()
-        => Guard.Against(Status is TransactionStatus.Approved or TransactionStatus.Rejected,
-            "Approved/Rejected transactions cannot be changed.");
 }

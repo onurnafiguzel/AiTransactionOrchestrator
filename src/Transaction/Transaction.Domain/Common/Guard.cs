@@ -13,9 +13,4 @@ public static class Guard
         if (value <= 0)
             throw new DomainException($"{fieldName} must be greater than zero.");
     }
-
-    public static void Against(bool condition, string message)
-    {
-        if (condition) throw new DomainException(message);
-    }
 }
