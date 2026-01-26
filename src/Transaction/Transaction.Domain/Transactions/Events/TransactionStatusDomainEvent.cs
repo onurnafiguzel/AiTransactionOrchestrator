@@ -2,6 +2,6 @@
 
 namespace Transaction.Domain.Transactions.Events;
 
-public sealed record TransactionDeletedDomainEvent(
+public sealed record TransactionStatusDomainEvent(
     Guid TransactionId
 ) : DomainEvent;

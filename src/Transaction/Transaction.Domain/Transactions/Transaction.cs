@@ -43,40 +43,10 @@ public sealed class Transaction : AggregateRoot
             UpdatedAtUtc = DateTime.UtcNow
         };
 
-        tx.AddDomainEvent(new TransactionCreatedDomainEvent(tx.Id, tx.Amount, tx.Currency, tx.MerchantId));
+        tx.RaiseDomainEvent(new TransactionCreatedDomainEvent(
+            tx.Id));
+
         return tx;
-    }
-
-    // UPDATE
-    public void Update(decimal amount, string currency)
-    {
-        EnsureNotDeleted();
-        EnsureMutable();
-
-        Guard.AgainstNegativeOrZero(amount, nameof(amount));
-        Guard.AgainstNullOrWhiteSpace(currency, nameof(currency));
-
-        Amount = amount;
-        Currency = currency.Trim().ToUpperInvariant();
-        UpdatedAtUtc = DateTime.UtcNow;
-
-        AddDomainEvent(new TransactionUpdatedDomainEvent(Id));
-    }
-
-    // DELETE (domain’de soft delete; infra’da physical delete olabilir)
-    public void Delete()
-    {
-        EnsureNotDeleted();
-
-        // İş kuralı: Approved/Rejected transaction silinemez (istersen değiştiririz)
-        Guard.Against(Status is TransactionStatus.Approved or TransactionStatus.Rejected,
-            "Approved/Rejected transactions cannot be deleted.");
-
-        IsDeleted = true;
-        Status = TransactionStatus.Deleted;
-        UpdatedAtUtc = DateTime.UtcNow;
-
-        AddDomainEvent(new TransactionDeletedDomainEvent(Id));
     }
 
     // Domain behavior (ileride saga/worker ile çağrılacak)
