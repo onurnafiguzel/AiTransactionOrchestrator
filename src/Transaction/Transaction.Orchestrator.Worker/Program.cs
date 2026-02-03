@@ -74,4 +74,23 @@ builder.Services.AddQuartzHostedService();
 builder.Services.AddHostedService<HealthEndpointHostedService>();
 
 var host = builder.Build();
+
+// Apply database migrations automatically
+try
+{
+    using (var scope = host.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<OrchestratorSagaDbContext>();
+        dbContext.Database.Migrate();
+        host.Services.GetRequiredService<Serilog.ILogger>()
+            .Information("✅ Saga database migrations applied successfully");
+    }
+}
+catch (Exception ex)
+{
+    host.Services.GetRequiredService<Serilog.ILogger>()
+        .Error(ex, "❌ Saga database migration failed");
+    throw;
+}
+
 host.Run();

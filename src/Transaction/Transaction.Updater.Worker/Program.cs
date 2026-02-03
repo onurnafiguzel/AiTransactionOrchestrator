@@ -1,5 +1,6 @@
 using BuildingBlocks.Observability;
 using MassTransit;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Transaction.Infrastructure;
 using Transaction.Updater.Worker.Consumers;
@@ -51,4 +52,23 @@ builder.Services.AddMassTransit(x =>
 builder.Services.AddHostedService<HealthEndpointHostedService>();
 
 var host = builder.Build();
+
+// Apply database migrations automatically
+try
+{
+    using (var scope = host.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<Transaction.Infrastructure.Persistence.TransactionDbContext>();
+        dbContext.Database.Migrate();
+        host.Services.GetRequiredService<Serilog.ILogger>()
+            .Information("✅ Transaction database migrations applied successfully");
+    }
+}
+catch (Exception ex)
+{
+    host.Services.GetRequiredService<Serilog.ILogger>()
+        .Error(ex, "❌ Transaction database migration failed");
+    throw;
+}
+
 host.Run();

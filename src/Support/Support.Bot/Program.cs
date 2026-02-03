@@ -32,8 +32,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
 app.MapGet("/support/transactions/{transactionId:guid}", async (
     Guid transactionId,
     SupportReadRepository repo,
@@ -119,5 +117,9 @@ app.MapGet("/support/incidents/summary", async (
         TimeoutRate: timeoutRate,
         TopMerchantsByTimeout: topMerchants));
 });
+
+app.MapHealthChecks("/health/live");
+app.MapHealthChecks("/health/ready");
+app.UseHttpsRedirection();
 
 app.Run();

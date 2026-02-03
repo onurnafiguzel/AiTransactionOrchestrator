@@ -1,26 +1,49 @@
 services:
+  # ==================== DATABASE ====================
   postgres:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: ato-postgres
     environment:
       POSTGRES_USER: ato
       POSTGRES_PASSWORD: ato_pass
       POSTGRES_DB: ato_db
+      POSTGRES_INITDB_ARGS: "-c shared_buffers=256MB -c max_connections=200"
     ports:
       - "5432:5432"
     volumes:
       - ato_pgdata:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ato"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ato-network
 
+  # ==================== MESSAGE BROKER ====================
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.13-management-alpine
     container_name: ato-rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ato_rabbitmq:/var/lib/rabbitmq
+      - ./scripts/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ato-network
 
+  # ==================== LOGGING ====================
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
     container_name: ato-elasticsearch
@@ -29,10 +52,18 @@ services:
       - xpack.security.enabled=false
       - xpack.security.enrollment.enabled=false
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - logger.level=warn
     ports:
       - "9200:9200"
     volumes:
       - ato_esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ato-network
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.13.4
@@ -43,8 +74,170 @@ services:
       - "5601:5601"
     depends_on:
       - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ato-network
 
+  # ==================== APPLICATIONS ====================
+  transaction-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.transaction-api
+    container_name: ato-transaction-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__TransactionDb: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: admin
+      RabbitMq__Password: admin
+      Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ato-network
+    restart: unless-stopped
+
+  fraud-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.fraud-worker
+    container_name: ato-fraud-worker
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__TransactionDb: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: admin
+      RabbitMq__Password: admin
+      Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
+      Health__Port: "5010"
+      Health__RabbitMq: "amqp://admin:admin@rabbitmq:5672"
+      Health__Postgres: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
+      FraudExplanation__Enabled: "false"
+    ports:
+      - "5010:5010"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      transaction-api:
+        condition: service_healthy
+    networks:
+      - ato-network
+    restart: unless-stopped
+
+  transaction-orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.transaction-orchestrator
+    container_name: ato-transaction-orchestrator
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__SagaDb: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: admin
+      RabbitMq__Password: admin
+      Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
+      Health__Port: "5020"
+      Health__RabbitMq: "amqp://admin:admin@rabbitmq:5672"
+      Health__Postgres: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
+    ports:
+      - "5020:5020"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      transaction-api:
+        condition: service_healthy
+    networks:
+      - ato-network
+    restart: unless-stopped
+
+  transaction-updater:
+    build:
+      context: .
+      dockerfile: Dockerfile.transaction-updater
+    container_name: ato-transaction-updater
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__TransactionDb: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: admin
+      RabbitMq__Password: admin
+      Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
+      Health__Port: "5030"
+      Health__RabbitMq: "amqp://admin:admin@rabbitmq:5672"
+      Health__Postgres: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
+    ports:
+      - "5030:5030"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      transaction-api:
+        condition: service_healthy
+    networks:
+      - ato-network
+    restart: unless-stopped
+
+  support-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.support-bot
+    container_name: ato-support-bot
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5040
+      ConnectionStrings__SupportDb: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
+      Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
+    ports:
+      - "5040:5040"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      transaction-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5040/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ato-network
+    restart: unless-stopped
 
 volumes:
   ato_pgdata:
+  ato_rabbitmq:
   ato_esdata:
+
+networks:
+  ato-network:
+    driver: bridge

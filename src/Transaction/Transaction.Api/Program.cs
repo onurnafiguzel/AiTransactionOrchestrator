@@ -2,6 +2,7 @@ using BuildingBlocks.Contracts.Observability;
 using BuildingBlocks.Observability;
 using MassTransit;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Transaction.Api.Middleware;
 using Transaction.Api.Outbox;
@@ -55,10 +56,26 @@ builder.Services.AddHostedService<OutboxPublisherService>();
 
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("TransactionDb")!)
-    .AddRabbitMQ(rabbitConnectionString: "amqp://admin:admin@localhost:5672");
+    .AddRabbitMQ(rabbitConnectionString: "amqp://admin:admin@rabbitmq:5672");
 
 
 var app = builder.Build();
+
+// Apply database migrations automatically
+try
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<Transaction.Infrastructure.Persistence.TransactionDbContext>();
+        dbContext.Database.Migrate();
+        app.Logger.LogInformation("✅ Database migrations applied successfully");
+    }
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "❌ Database migration failed");
+    throw;
+}
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 
@@ -67,7 +84,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 
 app.MapPost("/transactions", async (
     CreateTransactionRequest req,

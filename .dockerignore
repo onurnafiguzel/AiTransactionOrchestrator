@@ -1,0 +1,19 @@
+# Docker build ignore patterns
+bin/
+obj/
+.vs/
+.vscode/
+.git/
+.gitignore
+node_modules/
+npm-debug.log
+*.user
+*.suo
+*.sln.docstates
+.DS_Store
+/dist
+/build
+coverage/
+.coverage
+*.trx
+TestResults/
