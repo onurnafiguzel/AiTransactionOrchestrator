@@ -237,6 +237,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5040
       ConnectionStrings__SupportDb: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
+      ConnectionStrings__Redis: "redis:6379"
       Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
     ports:
       - "5040:5040"
@@ -244,6 +245,8 @@ services:
       postgres:
         condition: service_healthy
       elasticsearch:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       transaction-api:
         condition: service_healthy

@@ -1,5 +1,7 @@
 using BuildingBlocks.Observability;
 using Serilog;
+using StackExchange.Redis;
+using Support.Bot.Caching;
 using Support.Bot.Contracts;
 using Support.Bot.Data;
 using Support.Bot.Health;
@@ -16,6 +18,15 @@ builder.Services.AddSerilog((sp, lc) =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// ==================== REDIS CONFIGURATION ====================
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
+    ?? "localhost:6379";
+var multiplexer = ConnectionMultiplexer.Connect(redisConnectionString);
+builder.Services.AddSingleton<IConnectionMultiplexer>(multiplexer);
+
+// ==================== CACHING SERVICES ====================
+builder.Services.AddScoped<ISupportTransactionCacheService, RedisSupportTransactionCacheService>();
 
 var cs = builder.Configuration.GetConnectionString("SupportDb")
          ?? "Host=localhost;Port=5432;Database=ato_db;Username=ato;Password=ato_pass";
@@ -35,8 +46,16 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/support/transactions/{transactionId:guid}", async (
     Guid transactionId,
     SupportReadRepository repo,
+    ISupportTransactionCacheService cache,
     CancellationToken ct) =>
 {
+    // Try cache first
+    var cachedReport = await cache.GetSupportTransactionAsync<SupportTransactionReport>(transactionId, ct);
+    if (cachedReport is not null)
+    {
+        return Results.Ok(cachedReport);
+    }
+
     var tx = await repo.GetTransaction(transactionId, ct);
     if (tx is null)
         return Results.NotFound(new { transactionId });
@@ -76,15 +95,27 @@ app.MapGet("/support/transactions/{transactionId:guid}", async (
          Timeline: timeline,
         GeneratedAtUtc: DateTime.UtcNow);
 
+    // Cache the report (10 minutes TTL)
+    await cache.SetSupportTransactionAsync(transactionId, report, 10, ct);
+
     return Results.Ok(report);
 });
 
 app.MapGet("/support/incidents/summary", async (
     int? minutes,
     SupportReadRepository repo,
+    ISupportTransactionCacheService cache,
     CancellationToken ct) =>
 {
     var windowMinutes = Math.Clamp(minutes ?? 15, 1, 24 * 60);
+    var cacheKey = $"incidents:summary:{windowMinutes}";
+
+    // Try cache first (30 minutes TTL for incident summaries)
+    var cachedSummary = await cache.GetIncidentSummaryAsync<IncidentSummary>(cacheKey, ct);
+    if (cachedSummary is not null)
+    {
+        return Results.Ok(cachedSummary);
+    }
 
     var toUtc = DateTime.UtcNow;
     var fromUtc = toUtc.AddMinutes(-windowMinutes);
@@ -106,7 +137,7 @@ app.MapGet("/support/incidents/summary", async (
         ? 0m
         : Math.Round((decimal)counts.TimedOut / counts.Total, 4);
 
-    return Results.Ok(new IncidentSummary(
+    var summary = new IncidentSummary(
         WindowMinutes: windowMinutes,
         FromUtc: fromUtc,
         ToUtc: toUtc,
@@ -115,7 +146,12 @@ app.MapGet("/support/incidents/summary", async (
         RejectedCount: counts.Rejected,
         TimedOutCount: counts.TimedOut,
         TimeoutRate: timeoutRate,
-        TopMerchantsByTimeout: topMerchants));
+        TopMerchantsByTimeout: topMerchants);
+
+    // Cache the summary (30 minutes TTL)
+    await cache.SetIncidentSummaryAsync(cacheKey, summary, 30, ct);
+
+    return Results.Ok(summary);
 });
 
 app.MapHealthChecks("/health/live");

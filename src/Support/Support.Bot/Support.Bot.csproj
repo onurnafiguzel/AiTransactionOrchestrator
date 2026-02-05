@@ -5,6 +5,7 @@
 		<PackageReference Include="Swashbuckle.AspNetCore" />
 		<PackageReference Include="Dapper" />
 		<PackageReference Include="Npgsql" />
+		<PackageReference Include="StackExchange.Redis" />
 
 		<PackageReference Include="Serilog.AspNetCore" />
 		<PackageReference Include="Serilog.Sinks.Elasticsearch" />

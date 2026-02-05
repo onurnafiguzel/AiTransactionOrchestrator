@@ -10,6 +10,7 @@ using Transaction.Api.Outbox;
 using Transaction.Application.Abstractions;
 using Transaction.Application.Transactions;
 using Transaction.Infrastructure;
+using Transaction.Infrastructure.Caching;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +45,9 @@ var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
     ?? "localhost:6379";
 var multiplexer = ConnectionMultiplexer.Connect(redisConnectionString);
 builder.Services.AddSingleton<IConnectionMultiplexer>(multiplexer);
+
+// ==================== CACHING SERVICES ====================
+builder.Services.AddScoped<ITransactionCacheService, RedisTransactionCacheService>();
 
 builder.Services.AddTransactionInfrastructure(
     builder.Configuration.GetConnectionString("TransactionDb")!);
@@ -123,22 +127,37 @@ app.MapPost("/transactions", async (
     return Results.Created($"/transactions/{id}", new { transactionId = id, correlationId });
 });
 
-app.MapGet("/transactions/{id:guid}", async (Guid id, ITransactionRepository repo, CancellationToken ct) =>
+app.MapGet("/transactions/{id:guid}", async (Guid id, ITransactionRepository repo, ITransactionCacheService cache, CancellationToken ct) =>
 {
+    // Try cache first
+    var cachedTx = await cache.GetTransactionAsync<object>(id, ct);
+    if (cachedTx is not null)
+    {
+        return Results.Ok(cachedTx);
+    }
+
     var tx = await repo.Get(id, ct);
-    return tx is null
-        ? Results.NotFound()
-        : Results.Ok(new
-        {
-            tx.Id,
-            tx.Amount,
-            tx.Currency,
-            tx.MerchantId,
-            tx.Status,
-            tx.CreatedAtUtc,
-            tx.UpdatedAtUtc,
-            tx.IsDeleted
-        });
+    if (tx is null)
+    {
+        return Results.NotFound();
+    }
+
+    var response = new
+    {
+        tx.Id,
+        tx.Amount,
+        tx.Currency,
+        tx.MerchantId,
+        tx.Status,
+        tx.CreatedAtUtc,
+        tx.UpdatedAtUtc,
+        tx.IsDeleted
+    };
+
+    // Cache the response
+    await cache.SetTransactionAsync(id, response, ttlMinutes: 10, ct);
+
+    return Results.Ok(response);
 });
 
 app.MapHealthChecks("/health/live");
