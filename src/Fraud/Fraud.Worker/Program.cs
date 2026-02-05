@@ -3,6 +3,7 @@ using Fraud.Worker.AI;
 using Fraud.Worker.Consumers;
 using Fraud.Worker.Health;
 using Fraud.Worker.Rules;
+using Fraud.Worker.VelocityCheck;
 using MassTransit;
 using Serilog;
 
@@ -14,10 +15,16 @@ builder.Services.AddSerilog((sp, lc) =>
       .Enrich.FromLogContext()
       .Enrich.With<CorrelationIdEnricher>());
 
+// Velocity Check Service (In-memory for now, can be replaced with Redis)
+builder.Services.AddSingleton<IVelocityCheckService, InMemoryVelocityCheckService>();
+builder.Services.AddHostedService<VelocityCheckCleanupHostedService>();
+
 // Fraud Detection Rules
 builder.Services.AddScoped<IFraudDetectionRule, HighAmountRule>();
 builder.Services.AddScoped<IFraudDetectionRule, MerchantRiskRule>();
 builder.Services.AddScoped<IFraudDetectionRule, GeographicRiskRule>();
+builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+    new VelocityCheckRule(sp.GetRequiredService<IVelocityCheckService>()));
 builder.Services.AddScoped<FraudDetectionEngine>();
 
 builder.Services.AddScoped<FallbackFraudExplanationGenerator>();

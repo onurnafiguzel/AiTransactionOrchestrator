@@ -2,6 +2,7 @@
 using BuildingBlocks.Contracts.Observability;
 using Fraud.Worker.AI;
 using Fraud.Worker.Rules;
+using Fraud.Worker.VelocityCheck;
 using MassTransit;
 
 namespace Fraud.Worker.Consumers;
@@ -10,6 +11,7 @@ public sealed class FraudCheckRequestedConsumer(
     FraudDetectionEngine fraudEngine,
     IFraudExplanationGenerator llm,
     FallbackFraudExplanationGenerator fallback,
+    IVelocityCheckService velocityCheckService,
     ILogger<FraudCheckRequestedConsumer> logger)
     : IConsumer<FraudCheckRequested>
 {
@@ -62,6 +64,19 @@ public sealed class FraudCheckRequestedConsumer(
                 msg.MerchantId,
                 msg.CorrelationId,
                 context.CancellationToken);
+        }
+
+        // Eğer red flag aldıysa, velocity check history'sine kaydet
+        if (decision == "Reject")
+        {
+            await velocityCheckService.RecordRejectedTransactionAsync(
+                userId: msg.MerchantId, // TODO: Gerçek User ID kullan
+                amount: msg.Amount,
+                merchant: msg.MerchantId,
+                country: fraudContext.CustomerCountry ?? "Unknown");
+                
+            logger.LogWarning("Transaction rejected - recorded for velocity check. UserId: {UserId}",
+                msg.MerchantId);
         }
 
         await context.Publish(new FraudCheckCompleted(
