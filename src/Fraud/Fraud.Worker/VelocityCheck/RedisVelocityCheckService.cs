@@ -57,29 +57,29 @@ public sealed class RedisVelocityCheckService : IVelocityCheckService
         {
             var countKey = $"{KeyPrefix}{userId}:count";
             var detailsKey = $"{KeyPrefix}{userId}:details";
+            var ttl = TimeSpan.FromMinutes(CacheTtlMinutes);
 
             // Increment counter atomically
             var newCount = await _db.StringIncrementAsync(countKey);
 
-            // Set expiration if it's a new key (first increment)
-            if (newCount == 1)
-            {
-                await _db.KeyExpireAsync(countKey, TimeSpan.FromMinutes(CacheTtlMinutes));
-            }
+            // ALWAYS update TTL (even if key already existed)
+            // Bu şekilde, her yeni rejection'da 10 dakika timer reset olur
+            await _db.KeyExpireAsync(countKey, ttl);
 
-            // Store transaction details (optional, for audit)
+            // Store transaction details
             var details = $"{DateTime.UtcNow:O}|{amount}|{merchant}|{country}";
             await _db.ListRightPushAsync(detailsKey, details);
-            await _db.KeyExpireAsync(detailsKey, TimeSpan.FromMinutes(CacheTtlMinutes));
+            
+            // Details list'inin TTL'ini de her zaman set et
+            await _db.KeyExpireAsync(detailsKey, ttl);
 
             _logger.LogWarning(
-                "Rejected transaction recorded in Redis for user {UserId}. Count: {Count}, Amount: {Amount}, Merchant: {Merchant}",
-                userId, newCount, amount, merchant);
+                "Rejected transaction recorded in Redis for user {UserId}. Count: {Count}, Amount: {Amount}, Merchant: {Merchant}, TTL: {Ttl}m",
+                userId, newCount, amount, merchant, CacheTtlMinutes);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error recording rejected transaction in Redis for user {UserId}", userId);
-            // Non-blocking error - don't throw
         }
     }
 
@@ -87,13 +87,61 @@ public sealed class RedisVelocityCheckService : IVelocityCheckService
     {
         try
         {
-            // Redis otomatik TTL ile expiration yönetir
-            // Bu method sadece logging için kullanılabilir
             var server = _db.Multiplexer.GetServer(_db.Multiplexer.GetEndPoints().First());
-            var keys = server.Keys(pattern: $"{KeyPrefix}*");
-            var keyCount = keys.Count();
+            var keys = server.Keys(pattern: $"{KeyPrefix}*:details");
 
-            _logger.LogDebug("Velocity check cleanup check. Active keys: {KeyCount}", keyCount);
+            var deletedCount = 0;
+            var cutoffTime = DateTime.UtcNow.AddMinutes(-ageInMinutes);
+
+            foreach (var key in keys)
+            {
+                try
+                {
+                    // LIST'teki tüm detailları al
+                    var details = await _db.ListRangeAsync(key);
+
+                    if (details.Length == 0)
+                    {
+                        // Boş list'i sil
+                        await _db.KeyDeleteAsync(key);
+                        deletedCount++;
+                        continue;
+                    }
+
+                    // İlk item'in timestamp'ini kontrol et (oldest)
+                    var oldestDetail = details.First().ToString();
+                    if (string.IsNullOrEmpty(oldestDetail))
+                        continue;
+
+                    var parts = oldestDetail.Split('|');
+                    if (parts.Length == 0 || !DateTime.TryParse(parts[0], out var timestamp))
+                        continue;
+
+                    // Eğer en eski kayıt cutoff time'dan önceyse, tüm list'i sil
+                    if (timestamp < cutoffTime)
+                    {
+                        await _db.KeyDeleteAsync(key);
+                        
+                        // Karşılık gelen count key'ini de sil
+                        var countKey = key.ToString().Replace(":details", ":count");
+                        await _db.KeyDeleteAsync(countKey);
+                        
+                        deletedCount++;
+                        _logger.LogInformation(
+                            "Cleaned up old velocity records. Key: {Key}, OldestRecord: {Timestamp}",
+                            key, timestamp);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error processing key {Key} during cleanup", key);
+                    // Continue with next key
+                }
+            }
+
+            _logger.LogInformation(
+                "Velocity check cleanup completed. Deleted {DeletedCount} user records older than {AgeMinutes} minutes",
+                deletedCount, ageInMinutes);
         }
         catch (Exception ex)
         {
