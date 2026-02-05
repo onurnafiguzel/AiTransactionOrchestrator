@@ -1,0 +1,7 @@
+[
+  {
+    "key": "ctrl+shift+alt+r",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Run All Projects"
+  }
+]

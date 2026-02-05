@@ -1,0 +1,112 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "type": "shell",
+      "args": [
+        "build"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Fraud Worker",
+      "command": "dotnet",
+      "type": "shell",
+      "args": [
+        "run",
+        "--project",
+        "src/Fraud/Fraud.Worker/Fraud.Worker.csproj"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false
+      },
+      "isBackground": true
+    },
+    {
+      "label": "Transaction Api",
+      "command": "dotnet",
+      "type": "shell",
+      "args": [
+        "run",
+        "--project",
+        "src/Transaction/Transaction.Api/Transaction.Api.csproj"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false
+      },
+      "isBackground": true
+    },
+    {
+      "label": "Transaction Orchestrator",
+      "command": "dotnet",
+      "type": "shell",
+      "args": [
+        "run",
+        "--project",
+        "src/Transaction/Transaction.Orchestrator.Worker/Transaction.Orchestrator.Worker.csproj"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false
+      },
+      "isBackground": true
+    },
+    {
+      "label": "Transaction Updater",
+      "command": "dotnet",
+      "type": "shell",
+      "args": [
+        "run",
+        "--project",
+        "src/Transaction/Transaction.Updater.Worker/Transaction.Updater.Worker.csproj"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false
+      },
+      "isBackground": true
+    },
+    {
+      "label": "Run All Projects",
+      "dependsOn": [
+        "Fraud Worker",
+        "Transaction Api",
+        "Transaction Orchestrator",
+        "Transaction Updater"
+      ],
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

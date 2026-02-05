@@ -1,0 +1,78 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Fraud Worker Debug",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/Fraud/Fraud.Worker/bin/Debug/net8.0/Fraud.Worker.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/Fraud/Fraud.Worker",
+            "stopAtEntry": false,
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
+            "name": "Transaction Api Debug",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/Transaction/Transaction.Api/bin/Debug/net8.0/Transaction.Api.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/Transaction/Transaction.Api",
+            "stopAtEntry": false,
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
+            "name": "Transaction Orchestrator Debug",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/Transaction/Transaction.Orchestrator.Worker/bin/Debug/net8.0/Transaction.Orchestrator.Worker.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/Transaction/Transaction.Orchestrator.Worker",
+            "stopAtEntry": false,
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
+            "name": "Transaction Updater Debug",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/Transaction/Transaction.Updater.Worker/bin/Debug/net8.0/Transaction.Updater.Worker.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/Transaction/Transaction.Updater.Worker",
+            "stopAtEntry": false,
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Debug All Projects",
+            "configurations": [
+                "Fraud Worker Debug",
+                "Transaction Api Debug",
+                "Transaction Orchestrator Debug",
+                "Transaction Updater Debug"
+            ],
+            "stopOnEntry": false,
+            "preLaunchTask": "build"
+        }
+    ]
+}

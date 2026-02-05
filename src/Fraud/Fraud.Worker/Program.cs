@@ -2,6 +2,7 @@ using BuildingBlocks.Observability;
 using Fraud.Worker.AI;
 using Fraud.Worker.Consumers;
 using Fraud.Worker.Health;
+using Fraud.Worker.Rules;
 using MassTransit;
 using Serilog;
 
@@ -13,22 +14,30 @@ builder.Services.AddSerilog((sp, lc) =>
       .Enrich.FromLogContext()
       .Enrich.With<CorrelationIdEnricher>());
 
+// Fraud Detection Rules
+builder.Services.AddScoped<IFraudDetectionRule, HighAmountRule>();
+builder.Services.AddScoped<IFraudDetectionRule, MerchantRiskRule>();
+builder.Services.AddScoped<IFraudDetectionRule, GeographicRiskRule>();
+builder.Services.AddScoped<FraudDetectionEngine>();
+
 builder.Services.AddScoped<FallbackFraudExplanationGenerator>();
 
-//builder.Services.AddScoped<IFraudExplanationGenerator>(sp =>
-//{
-//    return sp.GetRequiredService<OpenAiFraudExplanationGenerator>();
-//});
+// Environment'dan API Key'i al
+var openAiApiKey = builder.Configuration["OpenAi:ApiKey"] 
+    ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 
-builder.Services.AddScoped<IFraudExplanationGenerator, LlmFraudExplanationGenerator>();
+if (!string.IsNullOrWhiteSpace(openAiApiKey))
+{
+    Environment.SetEnvironmentVariable("OPENAI_API_KEY", openAiApiKey);
+    builder.Services.AddScoped<IFraudExplanationGenerator, OpenAiFraudExplanationGenerator>();
+}
+else
+{
+    builder.Services.AddScoped<IFraudExplanationGenerator, LlmFraudExplanationGenerator>();
+}
 
 builder.Services.Configure<FraudExplanationOptions>(
     builder.Configuration.GetSection("FraudExplanation"));
-
-builder.Services.AddHttpClient<OpenAiFraudExplanationGenerator>(c =>
-{
-    c.Timeout = Timeout.InfiniteTimeSpan; // timeout'u biz CTS ile yönetiyoruz
-});
 
 builder.Services.AddMassTransit(x =>
 {

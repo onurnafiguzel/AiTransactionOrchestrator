@@ -11,6 +11,7 @@ public sealed class TransactionDbContextFactory : IDesignTimeDbContextFactory<Tr
             .UseNpgsql("Host=localhost;Port=5432;Database=ato_db;Username=ato;Password=ato_pass")
             .Options;
 
-        return new TransactionDbContext(options);
+        // Design-time: null mediator (migrations)
+        return new TransactionDbContext(options, mediator: null);
     }
 }

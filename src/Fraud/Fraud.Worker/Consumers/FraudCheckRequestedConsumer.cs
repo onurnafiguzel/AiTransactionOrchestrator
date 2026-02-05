@@ -1,11 +1,13 @@
 ﻿using BuildingBlocks.Contracts.Fraud;
 using BuildingBlocks.Contracts.Observability;
 using Fraud.Worker.AI;
+using Fraud.Worker.Rules;
 using MassTransit;
 
 namespace Fraud.Worker.Consumers;
 
 public sealed class FraudCheckRequestedConsumer(
+    FraudDetectionEngine fraudEngine,
     IFraudExplanationGenerator llm,
     FallbackFraudExplanationGenerator fallback,
     ILogger<FraudCheckRequestedConsumer> logger)
@@ -21,8 +23,20 @@ public sealed class FraudCheckRequestedConsumer(
                 ?? context.Message.CorrelationId
                 ?? Guid.NewGuid().ToString("N");
 
-        var riskScore = msg.Amount >= 10000 ? 85 : 15;
-        var decision = riskScore >= 70 ? "Reject" : "Approve";
+        // Advanced fraud detection - tüm rule'ları çalıştır
+        var fraudContext = new FraudDetectionContext(
+            TransactionId: msg.TransactionId,
+            MerchantId: msg.MerchantId,
+            Amount: msg.Amount,
+            Currency: msg.Currency,
+            CustomerIp: "0.0.0.0", // RabbitMQ message'tan gelmiyor, enhanceable
+            CustomerCountry: null, // Gerçek implementasyonda IP geolocation'dan al
+            TransactionTime: DateTime.UtcNow);
+
+        var fraudAnalysis = await fraudEngine.AnalyzeAsync(fraudContext, context.CancellationToken);
+
+        var riskScore = fraudAnalysis.RiskScore;
+        var decision = fraudAnalysis.Decision;
 
         string explanation;
 
@@ -58,11 +72,10 @@ public sealed class FraudCheckRequestedConsumer(
             CorrelationId: msg.CorrelationId
         ), pub =>
         {
-            pub.Headers.Set(Correlation
-                .HeaderName, cid);
+            pub.Headers.Set(Correlation.HeaderName, cid);
         });
 
-        logger.LogInformation("Fraud hesaplandı.");
-
+        logger.LogInformation("Fraud analysis completed. Decision: {Decision}, Risk Score: {RiskScore}",
+            decision, riskScore);
     }
 }

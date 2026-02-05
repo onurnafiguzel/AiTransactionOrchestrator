@@ -27,6 +27,17 @@ builder.Services.AddSerilog((sp, lc) =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Add CORS policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 builder.Services.AddTransactionInfrastructure(
     builder.Configuration.GetConnectionString("TransactionDb")!);
 
@@ -78,6 +89,9 @@ catch (Exception ex)
 }
 
 app.UseMiddleware<CorrelationIdMiddleware>();
+
+// Use CORS policy
+app.UseCors("AllowAll");
 
 if (app.Environment.IsDevelopment())
 {

@@ -7,7 +7,6 @@
 		<!-- Application -->
 		<PackageVersion Include="MediatR" Version="12.4.1" />
 
-
 		<!-- Infrastructure: EF Core + Postgres -->
 		<PackageVersion Include="Microsoft.EntityFrameworkCore" Version="8.0.11" />
 		<PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.11" />
@@ -48,6 +47,7 @@
 		<PackageVersion Include="AspNetCore.HealthChecks.RabbitMQ" Version="8.0.0" />
 		<PackageVersion Include="Microsoft.AspNetCore.Diagnostics.HealthChecks" Version="2.2.0" />
 
+		<PackageVersion Include="OpenAI" Version="2.8.0" />
 
 	</ItemGroup>
 </Project>
