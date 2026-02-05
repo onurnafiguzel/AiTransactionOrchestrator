@@ -82,6 +82,23 @@ services:
     networks:
       - ato-network
 
+  # ==================== CACHING ====================
+  redis:
+    image: redis:7-alpine
+    container_name: ato-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - ato_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ato-network
+
   # ==================== APPLICATIONS ====================
   transaction-api:
     build:
@@ -92,6 +109,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5000
       ConnectionStrings__TransactionDb: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
+      ConnectionStrings__Redis: "redis:6379"
       RabbitMq__Host: rabbitmq
       RabbitMq__Username: admin
       RabbitMq__Password: admin
@@ -104,6 +122,8 @@ services:
       rabbitmq:
         condition: service_healthy
       elasticsearch:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health/live"]
@@ -122,6 +142,7 @@ services:
     environment:
       DOTNET_ENVIRONMENT: Production
       ConnectionStrings__TransactionDb: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
+      ConnectionStrings__Redis: "redis:6379"
       RabbitMq__Host: rabbitmq
       RabbitMq__Username: admin
       RabbitMq__Password: admin
@@ -138,6 +159,8 @@ services:
       rabbitmq:
         condition: service_healthy
       elasticsearch:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       transaction-api:
         condition: service_healthy
@@ -237,6 +260,7 @@ volumes:
   ato_pgdata:
   ato_rabbitmq:
   ato_esdata:
+  ato_redis:
 
 networks:
   ato-network:

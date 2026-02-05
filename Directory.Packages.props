@@ -49,5 +49,8 @@
 
 		<PackageVersion Include="OpenAI" Version="2.8.0" />
 
+		<!-- Caching -->
+		<PackageVersion Include="StackExchange.Redis" Version="2.8.0" />
+
 	</ItemGroup>
 </Project>

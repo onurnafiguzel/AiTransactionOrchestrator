@@ -3,71 +3,69 @@ using Microsoft.Extensions.Logging;
 namespace Fraud.Worker.Rules;
 
 /// <summary>
-/// Coğrafi risk taraması - suspicious ülkelerden gelen işlemleri kontrol et
+/// Coğrafi risk taraması - Redis-backed ülke risk skorlarını kullanarak kontrol et
 /// </summary>
 public sealed class GeographicRiskRule : IFraudDetectionRule
 {
+    private readonly IGeographicRiskCacheService _geoCache;
     private readonly ILogger<GeographicRiskRule> _logger;
 
-    // Yüksek risk ülkeler
-    private static readonly HashSet<string> HighRiskCountries = new()
-    {
-        "KP", // North Korea
-        "IR", // Iran
-        "SY", // Syria
-        "CU"  // Cuba
-    };
-
-    // Moderate risk ülkeler
-    private static readonly HashSet<string> ModerateRiskCountries = new()
-    {
-        "RU", // Russia
-        "KZ", // Kazakhstan
-        "UZ"  // Uzbekistan
-    };
+    private const int HighRiskThreshold = 70;
+    private const int DefaultUnknownCountryRisk = 25;
+    private const int DefaultMissingCountryRisk = 20;
 
     public string RuleName => "GeographicRiskAssessment";
 
-    public GeographicRiskRule(ILogger<GeographicRiskRule> logger)
+    public GeographicRiskRule(
+        IGeographicRiskCacheService geoCache,
+        ILogger<GeographicRiskRule> logger)
     {
+        _geoCache = geoCache;
         _logger = logger;
     }
 
-    public Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
+    public async Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(context.CustomerCountry))
         {
-            return Task.FromResult(new FraudRuleResult(
+            return new FraudRuleResult(
                 RuleName,
                 IsFraud: false,
-                RiskScore: 20,
-                Reason: "Country information unavailable"));
+                RiskScore: DefaultMissingCountryRisk,
+                Reason: "Country information unavailable");
         }
 
-        if (HighRiskCountries.Contains(context.CustomerCountry))
-        {
-            _logger.LogWarning("High-risk country detected: {Country}", context.CustomerCountry);
-            return Task.FromResult(new FraudRuleResult(
-                RuleName,
-                IsFraud: true,
-                RiskScore: 80,
-                Reason: $"Transaction from high-risk country: {context.CustomerCountry}"));
-        }
+        // Get risk score from Redis HASH
+        var riskScore = await _geoCache.GetCountryRiskScoreAsync(context.CustomerCountry, ct);
 
-        if (ModerateRiskCountries.Contains(context.CustomerCountry))
+        if (!riskScore.HasValue)
         {
-            _logger.LogDebug("Moderate-risk country: {Country}", context.CustomerCountry);
-            return Task.FromResult(new FraudRuleResult(
+            _logger.LogDebug("Country {Country} not in cache, using default risk", context.CustomerCountry);
+            return new FraudRuleResult(
                 RuleName,
                 IsFraud: false,
-                RiskScore: 45,
-                Reason: $"Transaction from moderate-risk country: {context.CustomerCountry}"));
+                RiskScore: DefaultUnknownCountryRisk,
+                Reason: $"Country {context.CustomerCountry} risk profile unknown");
         }
 
-        return Task.FromResult(new FraudRuleResult(
+        var isFraud = riskScore.Value >= HighRiskThreshold;
+        var riskLevel = riskScore.Value switch
+        {
+            >= 70 => "high-risk",
+            >= 40 => "moderate-risk",
+            _ => "low-risk"
+        };
+
+        if (isFraud)
+        {
+            _logger.LogWarning("High-risk country detected: {Country} (Score: {Score})",
+                context.CustomerCountry, riskScore.Value);
+        }
+
+        return new FraudRuleResult(
             RuleName,
-            IsFraud: false,
-            RiskScore: 10,
-            Reason: $"Safe country detected: {context.CustomerCountry}"));
+            IsFraud: isFraud,
+            RiskScore: riskScore.Value,
+            Reason: $"Transaction from {riskLevel} country: {context.CustomerCountry} (Score: {riskScore.Value})");
     }
 }

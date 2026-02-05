@@ -4,6 +4,7 @@ using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using StackExchange.Redis;
 using Transaction.Api.Middleware;
 using Transaction.Api.Outbox;
 using Transaction.Application.Abstractions;
@@ -37,6 +38,12 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader();
     });
 });
+
+// ==================== REDIS CONFIGURATION ====================
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
+    ?? "localhost:6379";
+var multiplexer = ConnectionMultiplexer.Connect(redisConnectionString);
+builder.Services.AddSingleton<IConnectionMultiplexer>(multiplexer);
 
 builder.Services.AddTransactionInfrastructure(
     builder.Configuration.GetConnectionString("TransactionDb")!);

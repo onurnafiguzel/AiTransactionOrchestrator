@@ -8,7 +8,6 @@ namespace Fraud.Worker.VelocityCheck;
 /// </summary>
 public class VelocityCheckRule(IVelocityCheckService velocityCheckService) : IFraudDetectionRule
 {
-    private const int TimeWindowMinutes = 10;
     private const int RejectionThreshold = 3;
     private const int RiskScore = 80;
 
@@ -17,8 +16,7 @@ public class VelocityCheckRule(IVelocityCheckService velocityCheckService) : IFr
     public async Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
     {
         var rejectedCount = await velocityCheckService.GetRejectedTransactionCountAsync(
-            context.MerchantId,
-            TimeWindowMinutes);
+            context.MerchantId, ct);
 
         if (rejectedCount >= RejectionThreshold)
         {
@@ -26,7 +24,7 @@ public class VelocityCheckRule(IVelocityCheckService velocityCheckService) : IFr
                 RuleName: "Velocity Check",
                 RiskScore: RiskScore,
                 IsFraud: true,
-                Reason: $"{rejectedCount} başarısız işlem {TimeWindowMinutes} dakika içinde " +
+                Reason: $"{rejectedCount} başarısız işlem tespit edildi " +
                         $"(Threshold: {RejectionThreshold}) - Hesap potansiyel olarak ele alınıyor"
             );
         }

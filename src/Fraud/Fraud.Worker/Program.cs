@@ -1,11 +1,13 @@
 using BuildingBlocks.Observability;
 using Fraud.Worker.AI;
+using Fraud.Worker.Caching;
 using Fraud.Worker.Consumers;
 using Fraud.Worker.Health;
 using Fraud.Worker.Rules;
 using Fraud.Worker.VelocityCheck;
 using MassTransit;
 using Serilog;
+using StackExchange.Redis;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -15,8 +17,19 @@ builder.Services.AddSerilog((sp, lc) =>
       .Enrich.FromLogContext()
       .Enrich.With<CorrelationIdEnricher>());
 
-// Velocity Check Service (In-memory for now, can be replaced with Redis)
-builder.Services.AddSingleton<IVelocityCheckService, InMemoryVelocityCheckService>();
+// ==================== REDIS CONFIGURATION ====================
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
+    ?? "localhost:6379";
+var multiplexer = ConnectionMultiplexer.Connect(redisConnectionString);
+builder.Services.AddSingleton<IConnectionMultiplexer>(multiplexer);
+
+// ==================== REDIS CACHE SERVICES ====================
+builder.Services.AddSingleton<IMerchantRiskCacheService, RedisMerchantRiskCacheService>();
+builder.Services.AddSingleton<IGeographicRiskCacheService, RedisGeographicRiskCacheService>();
+builder.Services.AddHostedService<RedisCacheSeederHostedService>();
+
+// Velocity Check Service (Redis-backed for production)
+builder.Services.AddSingleton<IVelocityCheckService, RedisVelocityCheckService>();
 builder.Services.AddHostedService<VelocityCheckCleanupHostedService>();
 
 // Fraud Detection Rules

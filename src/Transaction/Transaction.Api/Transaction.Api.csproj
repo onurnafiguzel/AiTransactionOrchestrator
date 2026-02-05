@@ -8,6 +8,8 @@
 		<PackageReference Include="MassTransit" />
 		<PackageReference Include="MassTransit.RabbitMQ" />
 
+		<PackageReference Include="StackExchange.Redis" />
+
 		<PackageReference Include="Serilog.AspNetCore" />
 		<PackageReference Include="Serilog.Sinks.Elasticsearch" />
 		<PackageReference Include="Serilog.Enrichers.Environment" />
