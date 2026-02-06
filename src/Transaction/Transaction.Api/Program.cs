@@ -99,11 +99,11 @@ catch (Exception ex)
     throw;
 }
 
-// Exception handling - must be first middleware
-app.UseMiddleware<ExceptionHandlerMiddleware>();
-
 // Correlation ID tracking
 app.UseMiddleware<CorrelationIdMiddleware>();
+
+// Exception handling
+app.UseMiddleware<ExceptionHandlerMiddleware>();
 
 // Use CORS policy
 app.UseCors("AllowAll");
