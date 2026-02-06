@@ -101,8 +101,11 @@ catch (Exception ex)
 // Correlation ID tracking
 app.UseMiddleware<CorrelationIdMiddleware>();
 
-// IP Address extraction (before exception handler)
+// IP Address extraction
 app.UseMiddleware<IpAddressMiddleware>();
+
+// Request/Response logging
+app.UseMiddleware<RequestResponseLoggingMiddleware>();
 
 // Exception handling
 app.UseMiddleware<ExceptionHandlerMiddleware>();
