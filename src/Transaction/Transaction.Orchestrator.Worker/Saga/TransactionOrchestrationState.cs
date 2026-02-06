@@ -11,6 +11,7 @@ public sealed class TransactionOrchestrationState : SagaStateMachineInstance
     public decimal Amount { get; set; }
     public string Currency { get; set; } = default!;
     public string MerchantId { get; set; } = default!;
+    public string CustomerIp { get; set; } = "0.0.0.0";  // Client IP for fraud detection
 
     public int? RiskScore { get; set; }
     public string? FraudExplanation { get; set; }

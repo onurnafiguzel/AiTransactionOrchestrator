@@ -5,5 +5,6 @@ public sealed record FraudCheckRequested(
     decimal Amount,
     string Currency,
     string MerchantId,
-    string CorrelationId
+    string CorrelationId,
+    string CustomerIp = "0.0.0.0"  // Client IP for IP-based fraud detection
 );

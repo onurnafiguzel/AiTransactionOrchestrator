@@ -31,7 +31,7 @@ public sealed class FraudCheckRequestedConsumer(
             MerchantId: msg.MerchantId,
             Amount: msg.Amount,
             Currency: msg.Currency,
-            CustomerIp: "0.0.0.0", // RabbitMQ message'tan gelmiyor, enhanceable
+            CustomerIp: msg.CustomerIp,  // ← Use IP from message
             CustomerCountry: null, // Gerçek implementasyonda IP geolocation'dan al
             TransactionTime: DateTime.UtcNow);
 

@@ -10,6 +10,8 @@ public sealed class Transaction : AggregateRoot
     public decimal Amount { get; private set; }
     public string Currency { get; private set; } = default!;
     public string MerchantId { get; private set; } = default!;
+    public string CustomerIp { get; private set; } = default!; 
+
     public TransactionStatus Status { get; private set; }
     public bool IsDeleted { get; private set; }
 
@@ -25,11 +27,12 @@ public sealed class Transaction : AggregateRoot
     private Transaction() { } // ORM için; şimdi kullanılmıyor ama DDD’de standart
 
     // CREATE
-    public static Transaction Create(decimal amount, string currency, string merchantId)
+    public static Transaction Create(decimal amount, string currency, string merchantId, string customerIp)
     {
         Guard.AgainstNegativeOrZero(amount, nameof(amount));
         Guard.AgainstNullOrWhiteSpace(currency, nameof(currency));
         Guard.AgainstNullOrWhiteSpace(merchantId, nameof(merchantId));
+        Guard.AgainstNullOrWhiteSpace(customerIp, nameof(customerIp));
 
         var tx = new Transaction
         {
@@ -37,6 +40,7 @@ public sealed class Transaction : AggregateRoot
             Amount = amount,
             Currency = currency.Trim().ToUpperInvariant(),
             MerchantId = merchantId.Trim(),
+            CustomerIp = customerIp.Trim(),
             Status = TransactionStatus.Initiated,
             IsDeleted = false,
             CreatedAtUtc = DateTime.UtcNow,

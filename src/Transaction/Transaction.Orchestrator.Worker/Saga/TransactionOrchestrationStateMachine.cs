@@ -59,6 +59,7 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                     ctx.Saga.Amount = ctx.Message.Amount;
                     ctx.Saga.Currency = ctx.Message.Currency;
                     ctx.Saga.MerchantId = ctx.Message.MerchantId;
+                    ctx.Saga.CustomerIp = ctx.Message.CustomerIp;  // ← Store IP from event
 
                     ctx.Saga.CorrelationKey = cid;
 
@@ -97,7 +98,8 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                         Amount: ctx.Saga.Amount,
                         Currency: ctx.Saga.Currency,
                         MerchantId: ctx.Saga.MerchantId,
-                        CorrelationId: ctx.Saga.CorrelationKey);
+                        CorrelationId: ctx.Saga.CorrelationKey,
+                        CustomerIp: ctx.Saga.CustomerIp);
 
                     await ctx.Publish(msg, pub =>
                     {
@@ -293,7 +295,8 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                                 Amount: ctx.Saga.Amount,
                                 Currency: ctx.Saga.Currency,
                                 MerchantId: ctx.Saga.MerchantId,
-                                CorrelationId: ctx.Saga.CorrelationKey);
+                                CorrelationId: ctx.Saga.CorrelationKey,
+                                CustomerIp: ctx.Saga.CustomerIp);
 
                             await ctx.Publish(msg, pub =>
                             {

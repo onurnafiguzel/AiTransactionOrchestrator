@@ -26,6 +26,11 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
             .HasMaxLength(64)
             .IsRequired();
 
+        b.Property(x => x.CustomerIp)
+            .HasColumnName("customer_ip")
+            .HasMaxLength(45)  // IPv6 max length
+            .IsRequired();
+
         b.Property(x => x.Status)
             .HasColumnName("status")
             .HasConversion<int>()
@@ -56,7 +61,15 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
 
         b.Property(x => x.LastDecidedAtUtc)
             .HasColumnName("last_decided_at_utc");
+       
+       // Index for fraud detection queries
+        b.HasIndex(x => x.CustomerIp)
+            .HasDatabaseName("idx_transactions_customer_ip");
 
+        // Index for velocity checks
+        b.HasIndex(x => new { x.CustomerIp, x.CreatedAtUtc })
+            .HasDatabaseName("idx_transactions_customer_ip_created_at");
+            
         // DomainEvents EF tarafından persist edilmesin
         b.Ignore(x => x.DomainEvents);
     }

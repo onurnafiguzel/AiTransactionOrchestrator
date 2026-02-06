@@ -7,6 +7,7 @@ using StackExchange.Redis;
 using Transaction.Api.Middleware;
 using Transaction.Api.Outbox;
 using Transaction.Application;
+using Transaction.Application.IP;
 using Transaction.Infrastructure;
 using Transaction.Infrastructure.Caching;
 
@@ -43,6 +44,9 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(multiplexer);
 
 // ==================== CACHING SERVICES ====================
 builder.Services.AddScoped<ITransactionCacheService, RedisTransactionCacheService>();
+
+// IP Address context for fraud detection
+builder.Services.AddScoped<IpAddressContext>();
 
 builder.Services.AddTransactionInfrastructure(
     builder.Configuration.GetConnectionString("TransactionDb")!);
@@ -96,6 +100,9 @@ catch (Exception ex)
 
 // Correlation ID tracking
 app.UseMiddleware<CorrelationIdMiddleware>();
+
+// IP Address extraction (before exception handler)
+app.UseMiddleware<IpAddressMiddleware>();
 
 // Exception handling
 app.UseMiddleware<ExceptionHandlerMiddleware>();
