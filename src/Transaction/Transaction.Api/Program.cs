@@ -6,6 +6,7 @@ using Serilog;
 using StackExchange.Redis;
 using Transaction.Api.Middleware;
 using Transaction.Api.Outbox;
+using Transaction.Application;
 using Transaction.Infrastructure;
 using Transaction.Infrastructure.Caching;
 
@@ -46,8 +47,8 @@ builder.Services.AddScoped<ITransactionCacheService, RedisTransactionCacheServic
 builder.Services.AddTransactionInfrastructure(
     builder.Configuration.GetConnectionString("TransactionDb")!);
 
-builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(Transaction.Application.Transactions.CreateTransactionCommand).Assembly));
+// Add Application services with MediatR, validation, and handlers
+builder.Services.AddApplicationServices();
 
 builder.Services.AddMassTransit(x =>
 {

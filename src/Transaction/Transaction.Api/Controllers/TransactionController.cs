@@ -34,19 +34,6 @@ public sealed class TransactionController(
         [FromBody] CreateTransactionRequest request,
         CancellationToken cancellationToken)
     {
-        // Validate request
-        if (request == null)
-            throw new ArgumentNullException(nameof(request));
-
-        if (request.Amount <= 0)
-            throw new ArgumentException("Amount must be greater than zero", nameof(request.Amount));
-
-        if (string.IsNullOrWhiteSpace(request.Currency))
-            throw new ArgumentException("Currency is required", nameof(request.Currency));
-
-        if (string.IsNullOrWhiteSpace(request.MerchantId))
-            throw new ArgumentException("Merchant ID is required", nameof(request.MerchantId));
-
         // Get or create correlation ID
         var correlationId = CorrelationContext.CorrelationId
             ?? (HttpContext.Request.Headers.TryGetValue(Correlation.HeaderName, out var values)

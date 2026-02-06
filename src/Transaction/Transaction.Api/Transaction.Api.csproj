@@ -4,6 +4,7 @@
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" />
 		<PackageReference Include="Swashbuckle.AspNetCore" />
 		<PackageReference Include="MediatR" />
+		<PackageReference Include="FluentValidation" />
 
 		<PackageReference Include="MassTransit" />
 		<PackageReference Include="MassTransit.RabbitMQ" />
