@@ -21,6 +21,5 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
-	</ItemGroup>
-
-</Project>
+	  <ProjectReference Include="..\..\Transaction\Transaction.Domain\Transaction.Domain.csproj" />
+	</ItemGroup></Project>

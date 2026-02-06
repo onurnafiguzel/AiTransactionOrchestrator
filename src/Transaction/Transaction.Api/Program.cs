@@ -1,24 +1,15 @@
 using BuildingBlocks.Contracts.Observability;
 using BuildingBlocks.Observability;
 using MassTransit;
-using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using StackExchange.Redis;
 using Transaction.Api.Middleware;
 using Transaction.Api.Outbox;
-using Transaction.Application.Abstractions;
-using Transaction.Application.Transactions;
 using Transaction.Infrastructure;
 using Transaction.Infrastructure.Caching;
 
 var builder = WebApplication.CreateBuilder(args);
-
-//builder.Host.UseSerilog((ctx, lc) =>
-//{
-//    lc.ReadFrom.Configuration(ctx.Configuration)
-//      .Enrich.With<CorrelationIdEnricher>();
-//});
 
 builder.Services.AddSerilog((sp, lc) =>
     lc.ReadFrom.Configuration(builder.Configuration)
@@ -28,6 +19,9 @@ builder.Services.AddSerilog((sp, lc) =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Add Controllers
+builder.Services.AddControllers();
 
 // Add CORS policy
 builder.Services.AddCors(options =>
@@ -114,55 +108,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapPost("/transactions", async (
-    CreateTransactionRequest req,
-    ISender sender,
-    HttpContext http,
-    CancellationToken ct) =>
-{
-    var correlationId =
-        CorrelationContext.CorrelationId
-        ?? (http.Request.Headers.TryGetValue(Correlation.HeaderName, out var v) ? v.ToString() : Guid.NewGuid().ToString("N"));
-
-    var id = await sender.Send(
-        new CreateTransactionCommand(req.Amount, req.Currency, req.MerchantId, correlationId),
-        ct);
-
-    return Results.Created($"/transactions/{id}", new { transactionId = id, correlationId });
-});
-
-app.MapGet("/transactions/{id:guid}", async (Guid id, ITransactionRepository repo, ITransactionCacheService cache, CancellationToken ct) =>
-{
-    // Try cache first
-    var cachedTx = await cache.GetTransactionAsync<object>(id, ct);
-    if (cachedTx is not null)
-    {
-        return Results.Ok(cachedTx);
-    }
-
-    var tx = await repo.Get(id, ct);
-    if (tx is null)
-    {
-        return Results.NotFound();
-    }
-
-    var response = new
-    {
-        tx.Id,
-        tx.Amount,
-        tx.Currency,
-        tx.MerchantId,
-        tx.Status,
-        tx.CreatedAtUtc,
-        tx.UpdatedAtUtc,
-        tx.IsDeleted
-    };
-
-    // Cache the response
-    await cache.SetTransactionAsync(id, response, ttlMinutes: 10, ct);
-
-    return Results.Ok(response);
-});
+// Map controller routes
+app.MapControllers();
 
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
@@ -170,6 +117,4 @@ app.MapHealthChecks("/health/ready");
 app.UseHttpsRedirection();
 
 app.Run();
-
-public sealed record CreateTransactionRequest(decimal Amount, string Currency, string MerchantId);
 
