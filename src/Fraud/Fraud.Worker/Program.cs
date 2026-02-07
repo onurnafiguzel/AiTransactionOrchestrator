@@ -3,6 +3,7 @@ using Fraud.Worker.AI;
 using Fraud.Worker.Caching;
 using Fraud.Worker.Consumers;
 using Fraud.Worker.Health;
+using Fraud.Worker.Policies;
 using Fraud.Worker.Rules;
 using Fraud.Worker.VelocityCheck;
 using MassTransit;
@@ -38,6 +39,11 @@ builder.Services.AddScoped<IFraudDetectionRule, MerchantRiskRule>();
 builder.Services.AddScoped<IFraudDetectionRule, GeographicRiskRule>();
 builder.Services.AddScoped<IFraudDetectionRule>(sp => 
     new VelocityCheckRule(sp.GetRequiredService<IVelocityCheckService>()));
+
+// Circuit Breaker Policy for Fraud Detection
+builder.Services.AddSingleton<FraudCheckCircuitBreakerPolicy>();
+
+// Fraud Engine (with circuit breaker protection)
 builder.Services.AddScoped<FraudDetectionEngine>();
 
 builder.Services.AddScoped<FallbackFraudExplanationGenerator>();

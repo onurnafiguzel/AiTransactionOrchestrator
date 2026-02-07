@@ -56,5 +56,9 @@
 		<PackageVersion Include="FluentValidation" Version="11.9.2" />
 		<PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.9.2" />
 
+		<!-- Resilience Patterns -->
+		<PackageVersion Include="Polly" Version="8.4.1" />
+		<PackageVersion Include="Polly.CircuitBreaker" Version="8.4.1" />
+
 	</ItemGroup>
 </Project>

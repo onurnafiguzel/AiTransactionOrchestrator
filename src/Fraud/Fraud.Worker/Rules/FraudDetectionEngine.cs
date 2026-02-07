@@ -1,47 +1,62 @@
+using Fraud.Worker.Policies;
 using Microsoft.Extensions.Logging;
 
 namespace Fraud.Worker.Rules;
 
 /// <summary>
-/// Fraud detection engine - tüm rule'ları orchestrate eder
+/// Fraud detection engine - tüm rule'ları orchestrate eder.
+/// Circuit breaker ile korunmuş - cascade failures prevent eder.
+/// Primary constructor pattern (C# 12+).
 /// </summary>
-public sealed class FraudDetectionEngine
+public sealed class FraudDetectionEngine(
+    IEnumerable<IFraudDetectionRule> rules,
+    FraudCheckCircuitBreakerPolicy circuitBreakerPolicy,
+    ILogger<FraudDetectionEngine> logger)
 {
-    private readonly IEnumerable<IFraudDetectionRule> _rules;
-    private readonly ILogger<FraudDetectionEngine> _logger;
-
-    public FraudDetectionEngine(IEnumerable<IFraudDetectionRule> rules, ILogger<FraudDetectionEngine> logger)
-    {
-        _rules = rules;
-        _logger = logger;
-    }
-
     public async Task<FraudDetectionResult> AnalyzeAsync(FraudDetectionContext context, CancellationToken ct)
     {
-        _logger.LogDebug("Starting fraud analysis for transaction {TransactionId} from merchant {MerchantId}",
+        logger.LogDebug(
+            "🔍 Starting fraud analysis for transaction {TransactionId} from merchant {MerchantId}",
             context.TransactionId, context.MerchantId);
 
         var results = new List<FraudRuleResult>();
         var riskScores = new List<int>();
 
-        // Tüm rule'ları çalıştır
-        foreach (var rule in _rules)
+        // Tüm rule'ları çalıştır circuit breaker protection ile
+        foreach (var rule in rules)
         {
             try
             {
-                var result = await rule.EvaluateAsync(context, ct);
+                // Circuit breaker ile rule'ları wrap et
+                var result = await circuitBreakerPolicy.ExecuteAsync(
+                    async (cancelToken) => await rule.EvaluateAsync(context, cancelToken),
+                    ct);
+
                 results.Add(result);
                 riskScores.Add(result.RiskScore);
 
                 if (result.IsFraud)
                 {
-                    _logger.LogWarning("Fraud detected by rule {RuleName}: {Reason}",
-                        rule.RuleName, result.Reason);
+                    logger.LogWarning(
+                        "⚠️  Fraud detected by rule {RuleName}: {Reason}",
+                        result.RuleName, result.Reason);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error executing rule {RuleName}", rule.RuleName);
+                logger.LogError(
+                    ex,
+                    "❌ Error executing rule {RuleName} for transaction {TransactionId}",
+                    rule.RuleName,
+                    context.TransactionId);
+
+                // Rule fail olursa high risk score ekle
+                riskScores.Add(50);
+                results.Add(new FraudRuleResult(
+                    RuleName: rule.RuleName,
+                    IsFraud: false,
+                    RiskScore: 50,
+                    Reason: $"Rule failed with error: {ex.Message}"));
             }
         }
 
@@ -55,8 +70,8 @@ public sealed class FraudDetectionEngine
             Decision: decision,
             RuleResults: results);
 
-        _logger.LogInformation(
-            "Fraud analysis completed for transaction {TransactionId}. Risk Score: {RiskScore}, Decision: {Decision}",
+        logger.LogInformation(
+            "✅ Fraud analysis completed for transaction {TransactionId}. Risk Score: {RiskScore}, Decision: {Decision}",
             context.TransactionId, overallRiskScore, decision);
 
         return detectionResult;
