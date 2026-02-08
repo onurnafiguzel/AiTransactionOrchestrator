@@ -47,8 +47,9 @@ builder.Services.AddSingleton(new SupportReadRepository(cs));
 builder.Services.AddHostedService<HealthEndpointHostedService>();
 
 builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("SupportDb")!)
-    .AddRabbitMQ(rabbitConnectionString: "amqp://admin:admin@rabbitmq:5672");
+    .AddNpgSql(builder.Configuration.GetConnectionString("SupportDb")!, name: "postgres")
+    .AddRedis(redisConnectionString, name: "redis")
+    .AddRabbitMQ(rabbitConnectionString: "amqp://admin:admin@rabbitmq:5672", name: "rabbitmq");
 
 var app = builder.Build();
 

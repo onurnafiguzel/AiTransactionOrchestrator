@@ -76,8 +76,9 @@ builder.Services.AddMassTransit(x =>
 builder.Services.AddHostedService<OutboxPublisherService>();
 
 builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("TransactionDb")!)
-    .AddRabbitMQ(rabbitConnectionString: "amqp://admin:admin@rabbitmq:5672");
+    .AddNpgSql(builder.Configuration.GetConnectionString("TransactionDb")!, name: "postgres")
+    .AddRedis(redisConnectionString, name: "redis")
+    .AddRabbitMQ(rabbitConnectionString: "amqp://admin:admin@rabbitmq:5672", name: "rabbitmq");
 
 
 var app = builder.Build();

@@ -92,6 +92,7 @@ builder.Services.AddMassTransit(x =>
 });
 
 builder.Services.AddHealthChecks()
+    .AddRedis(redisConnectionString, name: "redis")
     .AddRabbitMQ(rabbitConnectionString: "amqp://admin:admin@localhost:5672", name: "rabbitmq");
 
 builder.Services.AddHostedService<HealthEndpointHostedService>();
