@@ -13,9 +13,14 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next)
 
         CorrelationContext.CorrelationId = correlationId;
 
+        // Store in HttpContext.Items for downstream middleware (RequestResponseLoggingMiddleware)
+        context.Items[Correlation.HeaderName] = correlationId;
+
+        // Store in Serilog LogContext for structured logging
+        LogContext.PushProperty("CorrelationId", correlationId);
+
         context.Response.Headers[Correlation.HeaderName] = correlationId;
 
         await next(context);
-
     }
 }

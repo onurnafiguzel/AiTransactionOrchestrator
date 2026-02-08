@@ -60,6 +60,21 @@
             "env": {
                 "ASPNETCORE_ENVIRONMENT": "Development"
             }
+        },
+        {
+            "name": "Support Bot Debug",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/Support/Support.Bot/bin/Debug/net8.0/Support.Bot.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/Support/Support.Bot",
+            "stopAtEntry": false,
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
         }
     ],
     "compounds": [
@@ -69,7 +84,8 @@
                 "Fraud Worker Debug",
                 "Transaction Api Debug",
                 "Transaction Orchestrator Debug",
-                "Transaction Updater Debug"
+                "Transaction Updater Debug",
+                "Support Bot Debug"
             ],
             "stopOnEntry": false,
             "preLaunchTask": "build"

@@ -1,5 +1,4 @@
 using BuildingBlocks.Contracts.Observability;
-using Serilog;
 using System.Text.Json;
 using Transaction.Domain.Common;
 

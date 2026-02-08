@@ -1,8 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
+using BuildingBlocks.Contracts.Observability;
 
 namespace Transaction.Api.Middleware;
 
@@ -154,12 +153,12 @@ public sealed class RequestResponseLoggingMiddleware(
     /// </summary>
     private static string GetCorrelationId(HttpContext context)
     {
-        if (context.Items.TryGetValue("CorrelationId", out var correlationId))
+        if (context.Items.TryGetValue(Correlation.HeaderName, out var correlationId))
         {
             return correlationId?.ToString() ?? GenerateId();
         }
 
-        if (context.Request.Headers.TryGetValue("X-Correlation-Id", out var headerValue))
+        if (context.Request.Headers.TryGetValue(Correlation.HeaderName, out var headerValue))
         {
             return headerValue.ToString();
         }
