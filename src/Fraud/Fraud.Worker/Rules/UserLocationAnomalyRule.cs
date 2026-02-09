@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Fraud.Worker.Caching;
 
 namespace Fraud.Worker.Rules;
 
@@ -8,28 +9,38 @@ namespace Fraud.Worker.Rules;
 /// - Bu işlem alışılmadık bir ülkeden mi geliyor?
 /// </summary>
 public sealed class UserLocationAnomalyRule(
+    IUserGeographicRestrictionCacheService userGeoCache,
     ILogger<UserLocationAnomalyRule> logger) : IFraudDetectionRule
 {
     public string RuleName => "UserLocationAnomaly";
 
-    public Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
+    public async Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
     {
-        // TODO: Redis'ten kullanıcının işlem geçmişini (ülkeler) al
-        // Redis key: user:transaction:countries:{userId}
-        // Örnek: ["TR", "US", "DE"] - kullanıcının daha önceki işlemler yapması normal olan ülkeler
-
         if (string.IsNullOrWhiteSpace(context.CustomerCountry))
         {
             // Ülke bilgisi yoksa risk hesaplanamıyor
-            return Task.FromResult(new FraudRuleResult(
+            return new FraudRuleResult(
                 RuleName,
                 IsFraud: false,
                 RiskScore: 10,
-                Reason: "Country information unavailable for anomaly detection"));
+                Reason: "Country information unavailable for anomaly detection");
         }
 
-        // TODO: Gerçek implementasyonda user history'den al
-        var userNormalCountries = new[] { "TR", "US", "DE", "GB", "FR" }; // Örnek
+        // Get user's transaction history from Redis
+        var userNormalCountries = await userGeoCache.GetUserTransactionCountriesAsync(context.UserId, ct);
+        
+        // If user has no history, consider all countries normal
+        if (userNormalCountries.Length == 0)
+        {
+            // Record this country in user's history
+            await userGeoCache.AddUserTransactionCountryAsync(context.UserId, context.CustomerCountry, ct);
+            return new FraudRuleResult(
+                RuleName,
+                IsFraud: false,
+                RiskScore: 15,
+                Reason: $"First transaction from {context.CustomerCountry} - building user location profile");
+        }
+
         var isAnomalousLocation = !userNormalCountries.Contains(context.CustomerCountry);
 
         if (isAnomalousLocation)
@@ -38,21 +49,24 @@ public sealed class UserLocationAnomalyRule(
                 "Anomalous location detected for user {UserId}: {Country}. Normal countries: {NormalCountries}",
                 context.UserId, context.CustomerCountry, string.Join(", ", userNormalCountries));
 
-            return Task.FromResult(new FraudRuleResult(
+            // Still record this as a transaction country for future reference
+            await userGeoCache.AddUserTransactionCountryAsync(context.UserId, context.CustomerCountry, ct);
+
+            return new FraudRuleResult(
                 RuleName,
                 IsFraud: false,  // Anomaly ≠ fraud, ama risk var
                 RiskScore: 55,
-                Reason: $"Transaction from unusual location: {context.CustomerCountry}. User normally transacts from: {string.Join(", ", userNormalCountries)}"));
+                Reason: $"Transaction from unusual location: {context.CustomerCountry}. User normally transacts from: {string.Join(", ", userNormalCountries)}");
         }
 
         logger.LogDebug(
             "User {UserId} location is normal: {Country}",
             context.UserId, context.CustomerCountry);
 
-        return Task.FromResult(new FraudRuleResult(
+        return new FraudRuleResult(
             RuleName,
             IsFraud: false,
             RiskScore: 5,
-            Reason: $"Transaction location is within user's normal pattern: {context.CustomerCountry}"));
+            Reason: $"Transaction location is within user's normal pattern: {context.CustomerCountry}");
     }
 }

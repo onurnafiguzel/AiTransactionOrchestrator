@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Fraud.Worker.Caching;
 
 namespace Fraud.Worker.Rules;
 
@@ -12,6 +13,7 @@ namespace Fraud.Worker.Rules;
 /// </summary>
 public sealed class GeographicRiskRule(
     IGeographicRiskCacheService geoCache,
+    IUserGeographicRestrictionCacheService userGeoCache,
     ILogger<GeographicRiskRule> logger) : IFraudDetectionRule
 {
     private const int HighRiskThreshold = 70;
@@ -31,10 +33,15 @@ public sealed class GeographicRiskRule(
                 Reason: "Country information unavailable");
         }
 
-        // TODO: Check user-specific country restrictions
-        // var isRestrictedCountry = await _userGeoCache
-        //     .IsRestrictedAsync(context.UserId, context.CustomerCountry, ct);
-        // if (isRestrictedCountry) return FraudRuleResult(...IsFraud: true...);
+        // Check user-specific country restrictions
+        if (await userGeoCache.IsRestrictedCountryAsync(context.UserId, context.CustomerCountry, ct))
+        {
+            return new FraudRuleResult(
+                RuleName,
+                IsFraud: true,
+                RiskScore: 95,
+                Reason: $"Country {context.CustomerCountry} is restricted for this user");
+        }
 
         // Get risk score from Redis HASH (global country risks)
         var riskScore = await geoCache.GetCountryRiskScoreAsync(context.CustomerCountry, ct);

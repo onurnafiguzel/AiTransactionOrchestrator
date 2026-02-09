@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Fraud.Worker.Caching;
 
 namespace Fraud.Worker.Rules;
 
@@ -13,16 +14,22 @@ namespace Fraud.Worker.Rules;
 /// </summary>
 public sealed class MerchantRiskRule(
     IMerchantRiskCacheService merchantCache,
+    IUserMerchantRestrictionCacheService userMerchantCache,
     ILogger<MerchantRiskRule> logger) : IFraudDetectionRule
 {
     public string RuleName => "MerchantRiskAssessment";
 
     public async Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
     {
-        // TODO: Check user-specific merchant blacklist
-        // var isUserBlacklisted = await _userMerchantCache
-        //     .IsBlacklistedForUserAsync(context.UserId, context.MerchantId, ct);
-        // if (isUserBlacklisted) return FraudRuleResult(...);
+        // Check user-specific merchant restrictions first
+        if (await userMerchantCache.IsRestrictedMerchantAsync(context.UserId, context.MerchantId, ct))
+        {
+            return new FraudRuleResult(
+                RuleName,
+                IsFraud: true,
+                RiskScore: 90,
+                Reason: "Merchant is restricted for this user");
+        }
 
         // Check global merchant blacklist (Redis SET)
         if (await merchantCache.IsBlacklistedAsync(context.MerchantId, ct))

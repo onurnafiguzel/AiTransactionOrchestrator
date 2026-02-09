@@ -1,49 +1,48 @@
+using Fraud.Worker.Caching;
+
 namespace Fraud.Worker.Rules;
 
 /// <summary>
 /// Büyük işlem tutarını kontrol et
 /// İşlem tutarı belirli eşik değerleri aşarsa flag et.
-/// 
-/// UserId kullanımı:
-/// - Per-user amount thresholds (premium kullanıcılar daha yüksek limitler)
-/// - User daily/monthly spending patterns
-/// - Redis: PUT user:threshold:{userId} → amount
+/// Per-user thresholds'ı Redis'ten alır - premium kullanıcılar daha yüksek limitler
 /// </summary>
-public sealed class HighAmountRule : IFraudDetectionRule
+public sealed class HighAmountRule(
+    IUserThresholdCacheService userThresholdCache) : IFraudDetectionRule
 {
     private const decimal HighAmountThreshold = 10000;
     private const decimal VeryHighAmountThreshold = 50000;
 
     public string RuleName => "HighAmountDetection";
 
-    public Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
+    public async Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
     {
-        // TODO: Redis'ten user-specific thresholds'ı al
-        // var userThreshold = await _userThresholdCache.GetAsync(context.UserId, ct) 
-        //     ?? VeryHighAmountThreshold;
+        // Get user-specific threshold from Redis (premium users have higher limits)
+        var userThreshold = await userThresholdCache.GetUserThresholdAsync(context.UserId, ct) 
+            ?? VeryHighAmountThreshold;
 
-        if (context.Amount >= VeryHighAmountThreshold)
+        if (context.Amount >= userThreshold)
         {
-            return Task.FromResult(new FraudRuleResult(
+            return new FraudRuleResult(
                 RuleName,
                 IsFraud: true,
                 RiskScore: 85,
-                Reason: $"Very high transaction amount: {context.Amount} {context.Currency}"));
+                Reason: $"Transaction amount {context.Amount} exceeds user threshold {userThreshold}");
         }
 
         if (context.Amount >= HighAmountThreshold)
         {
-            return Task.FromResult(new FraudRuleResult(
+            return new FraudRuleResult(
                 RuleName,
                 IsFraud: false,
                 RiskScore: 65,
-                Reason: $"High transaction amount: {context.Amount} {context.Currency}"));
+                Reason: $"High transaction amount: {context.Amount} {context.Currency}");
         }
 
-        return Task.FromResult(new FraudRuleResult(
+        return new FraudRuleResult(
             RuleName,
             IsFraud: false,
             RiskScore: 10,
-            Reason: "Amount within normal range"));
+            Reason: "Amount within normal range");
     }
 }

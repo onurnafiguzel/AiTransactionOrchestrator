@@ -25,9 +25,16 @@ var multiplexer = ConnectionMultiplexer.Connect(redisConnectionString);
 builder.Services.AddSingleton<IConnectionMultiplexer>(multiplexer);
 
 // ==================== REDIS CACHE SERVICES ====================
+// Global merchant and geographic risk caches
 builder.Services.AddSingleton<IMerchantRiskCacheService, RedisMerchantRiskCacheService>();
 builder.Services.AddSingleton<IGeographicRiskCacheService, RedisGeographicRiskCacheService>();
 builder.Services.AddHostedService<RedisCacheSeederHostedService>();
+
+// User-specific caches
+builder.Services.AddSingleton<IUserThresholdCacheService, RedisUserThresholdCacheService>();
+builder.Services.AddSingleton<IUserMerchantRestrictionCacheService, RedisUserMerchantRestrictionCacheService>();
+builder.Services.AddSingleton<IUserGeographicRestrictionCacheService, RedisUserGeographicRestrictionCacheService>();
+builder.Services.AddSingleton<IUserDailySpendingCacheService, RedisUserDailySpendingCacheService>();
 
 // Velocity Check Service (Redis-backed for production)
 builder.Services.AddSingleton<IVelocityCheckService, RedisVelocityCheckService>();
@@ -35,18 +42,34 @@ builder.Services.AddHostedService<VelocityCheckCleanupHostedService>();
 
 // Fraud Detection Rules
 // Amount-based rules
-builder.Services.AddScoped<IFraudDetectionRule, HighAmountRule>();
-builder.Services.AddScoped<IFraudDetectionRule, UserDailyLimitRule>();
+builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+    new HighAmountRule(sp.GetRequiredService<IUserThresholdCacheService>()));
+builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+    new UserDailyLimitRule(
+        sp.GetRequiredService<IUserDailySpendingCacheService>(),
+        sp.GetRequiredService<ILogger<UserDailyLimitRule>>()));
 
 // Merchant-based rules
-builder.Services.AddScoped<IFraudDetectionRule, MerchantRiskRule>();
+builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+    new MerchantRiskRule(
+        sp.GetRequiredService<IMerchantRiskCacheService>(),
+        sp.GetRequiredService<IUserMerchantRestrictionCacheService>(),
+        sp.GetRequiredService<ILogger<MerchantRiskRule>>()));
 
 // Geographic-based rules
-builder.Services.AddScoped<IFraudDetectionRule, GeographicRiskRule>();
-builder.Services.AddScoped<IFraudDetectionRule, UserLocationAnomalyRule>();
+builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+    new GeographicRiskRule(
+        sp.GetRequiredService<IGeographicRiskCacheService>(),
+        sp.GetRequiredService<IUserGeographicRestrictionCacheService>(),
+        sp.GetRequiredService<ILogger<GeographicRiskRule>>()));
+builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+    new UserLocationAnomalyRule(
+        sp.GetRequiredService<IUserGeographicRestrictionCacheService>(),
+        sp.GetRequiredService<ILogger<UserLocationAnomalyRule>>()));
 
 // User-based rules
-builder.Services.AddScoped<IFraudDetectionRule, UserRiskRule>();
+builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+    new UserRiskRule(sp.GetRequiredService<ILogger<UserRiskRule>>()));
 
 // Velocity-based rules (userId powered)
 builder.Services.AddScoped<IFraudDetectionRule>(sp => 

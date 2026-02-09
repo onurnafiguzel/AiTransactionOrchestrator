@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Fraud.Worker.Caching;
 
 namespace Fraud.Worker.Rules;
 
@@ -8,21 +9,18 @@ namespace Fraud.Worker.Rules;
 /// Bugün yapılan toplam işlemler sınırı aşarsa flag et.
 /// </summary>
 public sealed class UserDailyLimitRule(
+    IUserDailySpendingCacheService dailySpendingCache,
     ILogger<UserDailyLimitRule> logger) : IFraudDetectionRule
 {
     private const decimal DefaultDailyLimit = 100000; // 100K default
 
     public string RuleName => "UserDailyLimitCheck";
 
-    public Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
+    public async Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
     {
-        // TODO: Redis'ten kullanıcının günlük harcama toplamını al
-        // Redis key: daily:spent:{userId}:{date}
-        // Redis key: daily:limit:{userId}
-        
-        // Şimdilik: Başlangıç implementasyonu
-        var dailyLimit = DefaultDailyLimit;
-        var currentDailySpent = 0m; // TODO: Redis'ten al
+        // Get user's daily limit and current spending from Redis
+        var dailyLimit = await dailySpendingCache.GetDailyLimitAsync(context.UserId, ct);
+        var currentDailySpent = await dailySpendingCache.GetDailySpentAsync(context.UserId, ct);
 
         var projectedTotal = currentDailySpent + context.Amount;
 
@@ -32,12 +30,15 @@ public sealed class UserDailyLimitRule(
                 "Daily limit exceeded for user {UserId}. Current: {Current}, New: {New}, Limit: {Limit}",
                 context.UserId, currentDailySpent, context.Amount, dailyLimit);
 
-            return Task.FromResult(new FraudRuleResult(
+            return new FraudRuleResult(
                 RuleName,
                 IsFraud: true,
                 RiskScore: 70,
-                Reason: $"Daily limit would be exceeded: {projectedTotal} > {dailyLimit}"));
+                Reason: $"Daily limit would be exceeded: {projectedTotal} > {dailyLimit}");
         }
+
+        // Record this spending to daily total
+        await dailySpendingCache.AddDailySpendingAsync(context.UserId, context.Amount, ct);
 
         var utilizationPercent = (projectedTotal / dailyLimit) * 100;
         var riskScore = (int)Math.Min(50, utilizationPercent);
@@ -46,10 +47,10 @@ public sealed class UserDailyLimitRule(
             "User {UserId} daily spending: {Spent}/{Limit} ({Percent:F1}%)",
             context.UserId, projectedTotal, dailyLimit, utilizationPercent);
 
-        return Task.FromResult(new FraudRuleResult(
+        return new FraudRuleResult(
             RuleName,
             IsFraud: false,
             RiskScore: riskScore,
-            Reason: $"Daily limit check: {utilizationPercent:F1}% of {dailyLimit} utilized"));
+            Reason: $"Daily limit check: {utilizationPercent:F1}% of {dailyLimit} utilized");
     }
 }
