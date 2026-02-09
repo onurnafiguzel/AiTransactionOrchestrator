@@ -1,9 +1,12 @@
-using BuildingBlocks.Contracts.Observability;
 using BuildingBlocks.Observability;
 using MassTransit;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Serilog;
 using StackExchange.Redis;
+using System.Text;
 using Transaction.Api.Middleware;
 using Transaction.Api.Outbox;
 using Transaction.Application;
@@ -20,12 +23,72 @@ builder.Services.AddSerilog((sp, lc) =>
       .Enrich.With<CorrelationIdEnricher>());
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Transaction API",
+        Version = "v1",
+        Description = "AI Transaction Orchestrator - Transaction API"
+    });
 
-// Add Controllers
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\""
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
 builder.Services.AddControllers();
 
-// Add CORS policy
+var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "your-256-bit-secret-key-min-32chars-change-this-in-production!";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "AiTransactionOrchestrator";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "AiTransactionOrchestrator";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)),
+        ValidateIssuer = true,
+        ValidIssuer = jwtIssuer,
+        ValidateAudience = true,
+        ValidAudience = jwtAudience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("Customer", policy => policy.RequireRole("Customer", "Admin"));
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -36,22 +99,13 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ==================== REDIS CONFIGURATION ====================
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
-    ?? "localhost:6379";
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 var multiplexer = ConnectionMultiplexer.Connect(redisConnectionString);
 builder.Services.AddSingleton<IConnectionMultiplexer>(multiplexer);
 
-// ==================== CACHING SERVICES ====================
 builder.Services.AddScoped<ITransactionCacheService, RedisTransactionCacheService>();
-
-// IP Address context for fraud detection
 builder.Services.AddScoped<IpAddressContext>();
-
-builder.Services.AddTransactionInfrastructure(
-    builder.Configuration.GetConnectionString("TransactionDb")!);
-
-// Add Application services with MediatR, validation, and handlers
+builder.Services.AddTransactionInfrastructure(builder.Configuration.GetConnectionString("TransactionDb")!);
 builder.Services.AddApplicationServices();
 
 builder.Services.AddMassTransit(x =>
@@ -74,7 +128,6 @@ builder.Services.AddMassTransit(x =>
 });
 
 builder.Services.AddHostedService<OutboxPublisherService>();
-
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("TransactionDb")!, name: "postgres")
     .AddRedis(redisConnectionString, name: "redis")
@@ -83,50 +136,41 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// Apply database migrations automatically
 try
 {
     using (var scope = app.Services.CreateScope())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<Transaction.Infrastructure.Persistence.TransactionDbContext>();
         dbContext.Database.Migrate();
-        app.Logger.LogInformation("✅ Database migrations applied successfully");
+        app.Logger.LogInformation("Database migrations applied");
     }
 }
 catch (Exception ex)
 {
-    app.Logger.LogError(ex, "❌ Database migration failed");
+    app.Logger.LogError(ex, "Database migration failed");
     throw;
 }
 
-// Correlation ID tracking
 app.UseMiddleware<CorrelationIdMiddleware>();
-
-// IP Address extraction
 app.UseMiddleware<IpAddressMiddleware>();
-
-// Request/Response logging
 app.UseMiddleware<RequestResponseLoggingMiddleware>();
-
-// Exception handling
 app.UseMiddleware<ExceptionHandlerMiddleware>();
-
-// Use CORS policy
 app.UseCors("AllowAll");
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.ConfigObject.AdditionalItems["persistAuthorization"] = true;
+    });
 }
 
-// Map controller routes
 app.MapControllers();
-
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
-
 app.UseHttpsRedirection();
-
 app.Run();
-

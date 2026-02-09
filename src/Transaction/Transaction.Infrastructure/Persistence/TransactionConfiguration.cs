@@ -12,6 +12,10 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
 
         b.HasKey(x => x.Id);
 
+        b.Property(x => x.UserId)
+            .HasColumnName("user_id")
+            .IsRequired();
+
         b.Property(x => x.Amount)
             .HasColumnName("amount")
             .IsRequired();
@@ -66,9 +70,17 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
         b.HasIndex(x => x.CustomerIp)
             .HasDatabaseName("idx_transactions_customer_ip");
 
+        // Index for user transactions
+        b.HasIndex(x => x.UserId)
+            .HasDatabaseName("idx_transactions_user_id");
+
         // Index for velocity checks
         b.HasIndex(x => new { x.CustomerIp, x.CreatedAtUtc })
             .HasDatabaseName("idx_transactions_customer_ip_created_at");
+
+        // Index for user velocity checks
+        b.HasIndex(x => new { x.UserId, x.CreatedAtUtc })
+            .HasDatabaseName("idx_transactions_user_id_created_at");
             
         // DomainEvents EF tarafından persist edilmesin
         b.Ignore(x => x.DomainEvents);

@@ -22,6 +22,7 @@ public sealed class CreateTransactionHandler(
         var customerIp = ipContext.ClientIpAddress;
 
         var tx = Transaction.Domain.Transactions.Transaction.Create(
+            request.UserId,
             request.Amount,
             request.Currency,
             request.MerchantId,
@@ -32,6 +33,7 @@ public sealed class CreateTransactionHandler(
         await outbox.Enqueue(
             new BuildingBlocks.Contracts.Transactions.TransactionCreated(
                 tx.Id,
+                tx.UserId,
                 request.Amount,
                 request.Currency,
                 request.MerchantId,

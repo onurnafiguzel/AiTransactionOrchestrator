@@ -1,6 +1,8 @@
 using BuildingBlocks.Contracts.Observability;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using Transaction.Application.Abstractions;
 using Transaction.Application.Transactions;
 using Transaction.Infrastructure.Caching;
@@ -13,6 +15,7 @@ namespace Transaction.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[Authorize] 
 public sealed class TransactionController(
     ISender mediator,
     ITransactionRepository repository,
@@ -28,12 +31,27 @@ public sealed class TransactionController(
     /// <returns>Created transaction with ID and correlation ID</returns>
     /// <response code="201">Transaction created successfully</response>
     /// <response code="400">Invalid request parameters</response>
+    /// <response code="401">Unauthorized - JWT token required</response>
     /// <response code="500">Internal server error</response>
     [HttpPost]
     public async Task<ActionResult> Create(
         [FromBody] CreateTransactionRequest request,
         CancellationToken cancellationToken)
     {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;        
+        
+        if (string.IsNullOrEmpty(userIdClaim))
+        {
+            return Unauthorized(new { error = "UserId not found in token" });
+        }
+
+        // Extract UserId from JWT claims
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            logger.LogWarning("Transaction creation failed - UserId not found in JWT claims");
+            return Unauthorized(new { error = "UserId not found in token" });
+        }
+
         // Get or create correlation ID
         var correlationId = CorrelationContext.CorrelationId
             ?? (HttpContext.Request.Headers.TryGetValue(Correlation.HeaderName, out var values)
@@ -42,6 +60,7 @@ public sealed class TransactionController(
 
         // Create transaction via mediator
         var command = new CreateTransactionCommand(
+            userId,
             request.Amount,
             request.Currency,
             request.MerchantId,
@@ -50,8 +69,9 @@ public sealed class TransactionController(
         var transactionId = await mediator.Send(command, cancellationToken);
 
         logger.LogInformation(
-            "Transaction created successfully | TransactionId={TransactionId} CorrelationId={CorrelationId}",
+            "Transaction created successfully | TransactionId={TransactionId} UserId={UserId} CorrelationId={CorrelationId}",
             transactionId,
+            userId,
             correlationId);
 
         return CreatedAtAction(
@@ -60,6 +80,7 @@ public sealed class TransactionController(
             new
             {
                 transactionId = transactionId,
+                userId = userId,
                 correlationId = correlationId
             });
     }
@@ -115,6 +136,23 @@ public sealed class TransactionController(
         logger.LogDebug("Transaction cached | TransactionId={TransactionId}", id);
 
         return Ok(response);
+    }
+
+
+    [HttpPost("debug")]
+    public IActionResult DebugAuth()
+    {
+    var authHeader = HttpContext.Request.Headers["Authorization"].ToString();
+    
+    return Ok(new
+    {
+        AuthorizationHeader = authHeader,
+        IsAuthenticated = User.Identity?.IsAuthenticated,
+        UserName = User.Identity?.Name,
+        AuthenticationType = User.Identity?.AuthenticationType,
+        ClaimsCount = User.Claims.Count(),
+        Claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList()
+    });
     }
 }
 

@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using MediatR;
 using Transaction.Application.Abstractions;
 using Transaction.Application.Outbox;
+using Transaction.Application.Users;
+using Transaction.Infrastructure.Authentication;
 using Transaction.Infrastructure.Inbox;
 using Transaction.Infrastructure.Outbox;
 using Transaction.Infrastructure.Persistence;
@@ -28,9 +30,14 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddScoped<ITransactionRepository, TransactionRepository>();
+        services.AddScoped<IUserRepository, Transaction.Infrastructure.Persistence.Repositories.UserRepository>();
         services.AddScoped<IOutboxWriter, EfCoreOutboxWriter>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<InboxGuard>();
+
+        // Authentication services
+        services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddScoped<IPasswordHasher, PasswordHasher>();
 
         return services;
     }

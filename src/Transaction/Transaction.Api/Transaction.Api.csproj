@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
 		<PackageReference Include="Swashbuckle.AspNetCore" />
 		<PackageReference Include="MediatR" />
 		<PackageReference Include="FluentValidation" />
@@ -21,6 +21,7 @@
 		<PackageReference Include="AspNetCore.HealthChecks.RabbitMQ"  />
 		<PackageReference Include="AspNetCore.HealthChecks.Redis" />
 		<PackageReference Include="Microsoft.AspNetCore.Diagnostics.HealthChecks" />
+		<PackageReference Include="Swashbuckle.AspNetCore.Filters" />
 	</ItemGroup>
 
 	<ItemGroup>

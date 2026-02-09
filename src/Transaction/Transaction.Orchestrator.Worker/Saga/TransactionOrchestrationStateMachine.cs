@@ -56,6 +56,7 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                     var cid = GetCorrelationId(ctx, ctx.Message.CorrelationId);
 
                     ctx.Saga.TransactionId = ctx.Message.TransactionId;
+                    ctx.Saga.UserId = ctx.Message.UserId;
                     ctx.Saga.Amount = ctx.Message.Amount;
                     ctx.Saga.Currency = ctx.Message.Currency;
                     ctx.Saga.MerchantId = ctx.Message.MerchantId;
@@ -95,6 +96,7 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                 {
                     var msg = new FraudCheckRequested(
                         TransactionId: ctx.Saga.TransactionId,
+                        UserId: ctx.Saga.UserId,
                         Amount: ctx.Saga.Amount,
                         Currency: ctx.Saga.Currency,
                         MerchantId: ctx.Saga.MerchantId,
@@ -292,6 +294,7 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                         {
                             var msg = new FraudCheckRequested(
                                 TransactionId: ctx.Saga.TransactionId,
+                                UserId: ctx.Saga.UserId,
                                 Amount: ctx.Saga.Amount,
                                 Currency: ctx.Saga.Currency,
                                 MerchantId: ctx.Saga.MerchantId,

@@ -17,6 +17,8 @@ public sealed class TransactionOrchestrationStateMap : SagaClassMap<TransactionO
         entity.Property(x => x.TransactionId).IsRequired();
         entity.HasIndex(x => x.TransactionId).IsUnique();
 
+        entity.Property(x => x.UserId).IsRequired();
+
         entity.Property(x => x.CorrelationKey).HasMaxLength(128);
 
         entity.Property(x => x.Currency).HasMaxLength(8);

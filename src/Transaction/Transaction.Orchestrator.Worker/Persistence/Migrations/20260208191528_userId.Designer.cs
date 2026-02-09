@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Transaction.Orchestrator.Worker.Persistence;
@@ -11,9 +12,11 @@ using Transaction.Orchestrator.Worker.Persistence;
 namespace Transaction.Orchestrator.Worker.Persistence.Migrations
 {
     [DbContext(typeof(OrchestratorSagaDbContext))]
-    partial class OrchestratorSagaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260208191528_userId")]
+    partial class userId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

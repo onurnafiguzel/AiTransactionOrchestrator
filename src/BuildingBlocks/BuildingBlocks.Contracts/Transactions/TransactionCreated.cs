@@ -2,6 +2,7 @@
 
 public sealed record TransactionCreated(
     Guid TransactionId,
+    Guid UserId,
     decimal Amount,
     string Currency,
     string MerchantId,

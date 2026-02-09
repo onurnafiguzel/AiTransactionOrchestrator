@@ -7,6 +7,7 @@ namespace Transaction.Domain.Transactions;
 public sealed class Transaction : AggregateRoot
 {
     // State
+    public Guid UserId { get; private set; }
     public decimal Amount { get; private set; }
     public string Currency { get; private set; } = default!;
     public string MerchantId { get; private set; } = default!;
@@ -27,8 +28,11 @@ public sealed class Transaction : AggregateRoot
     private Transaction() { } // ORM için; şimdi kullanılmıyor ama DDD’de standart
 
     // CREATE
-    public static Transaction Create(decimal amount, string currency, string merchantId, string customerIp)
+    public static Transaction Create(Guid userId, decimal amount, string currency, string merchantId, string customerIp)
     {
+        if (userId == Guid.Empty)
+            throw new ArgumentException("UserId cannot be empty", nameof(userId));
+
         Guard.AgainstNegativeOrZero(amount, nameof(amount));
         Guard.AgainstNullOrWhiteSpace(currency, nameof(currency));
         Guard.AgainstNullOrWhiteSpace(merchantId, nameof(merchantId));
@@ -37,6 +41,7 @@ public sealed class Transaction : AggregateRoot
         var tx = new Transaction
         {
             Id = Guid.NewGuid(),
+            UserId = userId,
             Amount = amount,
             Currency = currency.Trim().ToUpperInvariant(),
             MerchantId = merchantId.Trim(),
@@ -48,7 +53,8 @@ public sealed class Transaction : AggregateRoot
         };
 
         tx.RaiseDomainEvent(new TransactionCreatedDomainEvent(
-            tx.Id));
+            tx.Id,
+            tx.UserId));
 
         return tx;
     }

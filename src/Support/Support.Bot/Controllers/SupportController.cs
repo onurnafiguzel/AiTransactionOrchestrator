@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Support.Bot.Caching;
 using Support.Bot.Contracts;
@@ -8,11 +9,12 @@ using Transaction.Domain.Transactions;
 namespace Support.Bot.Controllers;
 
 /// <summary>
-/// Customer support endpoints for transaction inquiry
+/// Customer support endpoints for transaction inquiry - ADMIN ONLY
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[Authorize(Policy = "Admin")]
 public sealed class SupportController(
     SupportReadRepository repository,
     ISupportTransactionCacheService cacheService,

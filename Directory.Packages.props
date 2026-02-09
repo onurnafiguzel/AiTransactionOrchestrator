@@ -8,14 +8,14 @@
 		<PackageVersion Include="MediatR" Version="12.4.1" />
 
 		<!-- Infrastructure: EF Core + Postgres -->
+		<PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
 		<PackageVersion Include="Microsoft.EntityFrameworkCore" Version="8.0.11" />
 		<PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.11" />
 		<PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11" />
 		<PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
 
 		<!-- API: Swagger / OpenAPI -->
-		<PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="8.0.11" />
-		<PackageVersion Include="Swashbuckle.AspNetCore" Version="6.7.0" />
+		<PackageVersion Include="Swashbuckle.AspNetCore" Version="6.9.0" />
 
 		<!-- Worker Service	-->
 		<PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
@@ -60,6 +60,9 @@
 		<!-- Resilience Patterns -->
 		<PackageVersion Include="Polly" Version="8.4.1" />
 		<PackageVersion Include="Polly.CircuitBreaker" Version="8.4.1" />
+
+		<PackageVersion Include="Swashbuckle.AspNetCore.Filters" Version="8.0.2" />
+		<PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
 
 	</ItemGroup>
 </Project>
