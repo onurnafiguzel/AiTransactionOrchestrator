@@ -1,203 +1,519 @@
-# 🎯 Eksik Başlıklar - Kısa Özet
+# 🎯 Eksik Özellikler ve Tamamlanma Takvimi
 
-## 🔴 KRITIK - Hemen Yapılması Gereken (5 adet)
+**Son Güncelleme:** 9 Şubat 2026  
+**Proje Tamamlanma:** %90  
+**Kalan İş:** 15 özellik, ~120 saat
 
-### 1. Global Exception Handler Middleware ❌
-**Dosya:** `src/Transaction/Transaction.Api/Middleware/ExceptionHandlerMiddleware.cs`  
-**Sorun:** Unhandled exceptions → 500 status code, düzensiz response  
-**Çözüm:** 
-```csharp
-// Catch all exceptions, return structured error
-// Format: { error: string, correlationId: string }
-// Log exception details
-```
+---
 
-### 2. Input Validation ❌
-**Dosya:** `src/Transaction/Transaction.Api/` (validator classes)  
-**Sorun:** `CreateTransactionRequest` hiçbir validation yok  
-**Çözüm:**
-```csharp
-// FluentValidation kullan
-// Rules: Amount > 0, Currency not null, MerchantId valid
-```
+## 📊 Özet İstatistikler
 
-### 3. Customer IP Missing ❌
-**Dosya:** `src/Fraud/Fraud.Worker/Consumers/FraudCheckRequestedConsumer.cs` (Line 47)  
-**Sorun:** IP-based fraud detection için IP gerekli, hardcoded "0.0.0.0" var  
-**Çözüm:**
-```csharp
-// API'den IP al → CreateTransactionRequest ekle
-// Saga'ya geçir → FraudCheckRequested'e ekle
-// Fraud rules'da kullan
-```
+| Kategori | Tamamlandı | Devam Ediyor | Eksik | Toplam |
+|----------|------------|--------------|-------|--------|
+| **Microservices** | 5 | 0 | 0 | 5 |
+| **Infrastructure** | 5 | 0 | 0 | 5 |
+| **Core Features** | 18 | 0 | 0 | 18 |
+| **Testing** | 0 | 0 | 4 | 4 |
+| **Production Features** | 3 | 2 | 10 | 15 |
+| **Nice-to-Have** | 0 | 0 | 6 | 6 |
 
-### 4. Velocity Check User ID Yanlış ❌
-**Dosya:** `src/Fraud/Fraud.Worker/Consumers/FraudCheckRequestedConsumer.cs` (Line 72)  
-**Sorun:** `userId: msg.MerchantId` ← YANIŞ! Hızlı işlem kontrolü user başına olmalı  
-**Çözüm:**
-```csharp
-// userId: msg.UserId olmalı (şu an msg'ta yok)
-// CreateTransactionRequest'e CustomerId/UserId ekle
-// Saga'ya geçir
-```
+---
 
-### 5. Unit Tests Yok ❌
+## 🔴 KRITIK - Production İçin Gerekli (4 adet)
+
+> **Not:** Aşağıdaki özellikler production'a geçmeden önce mutlaka tamamlanmalı.
+
+### 1. Unit Tests Eksik ❌
 **Dosya:** `Tests/` (tüm klasör eksik)  
-**Sorun:** 0% test coverage - production için unacceptable  
-**Çözüm:**
+**Durum:** 0% test coverage - Production için kabul edilemez  
+**Süre:** 20-24 saat  
+**Öncelik:** 🔴 Kritik
+
+**Gerekli Test Projeleri:**
 ```
 Tests/
-├── Fraud.Worker.Tests/
+├── Transaction.Domain.Tests/          # Domain model tests
+│   ├── TransactionTests.cs
+│   ├── UserTests.cs
+│   └── GuardTests.cs
+│
+├── Transaction.Application.Tests/     # Application logic tests
+│   ├── Commands/
+│   │   └── CreateTransactionHandlerTests.cs
+│   ├── Behaviors/
+│   │   ├── ValidationBehaviorTests.cs
+│   │   └── TransactionBehaviorTests.cs
+│   └── DomainEvents/
+│       └── TransactionCreatedEventHandlerTests.cs
+│
+├── Transaction.Api.Tests/             # API endpoint tests
+│   ├── Controllers/
+│   │   └── TransactionControllerTests.cs
+│   └── Middleware/
+│       ├── ExceptionHandlerMiddlewareTests.cs
+│       └── RequestLoggingMiddlewareTests.cs
+│
+├── Fraud.Worker.Tests/                # Fraud detection tests
 │   ├── Rules/
 │   │   ├── VelocityCheckRuleTests.cs
 │   │   ├── MerchantRiskRuleTests.cs
 │   │   ├── GeographicRiskRuleTests.cs
 │   │   └── HighAmountRuleTests.cs
-│   ├── Services/
-│   │   └── [Cache service tests]
-│   └── Consumers/
-│       └── FraudCheckRequestedConsumerTests.cs
-├── Transaction.Api.Tests/
-│   ├── CreateTransactionEndpointTests.cs
-│   └── GetTransactionEndpointTests.cs
-└── Integration.Tests/
-    ├── TransactionFlowTests.cs
-    └── FraudDetectionFlowTests.cs
+│   ├── Consumers/
+│   │   └── FraudCheckRequestedConsumerTests.cs
+│   └── Policies/
+│       └── FraudCheckCircuitBreakerTests.cs
+│
+├── Transaction.Orchestrator.Tests/    # Saga tests
+│   └── StateMachine/
+│       └── TransactionOrchestrationStateMachineTests.cs
+│
+└── Transaction.Infrastructure.Tests/  # Infrastructure tests
+    ├── Caching/
+    │   └── RedisTransactionCacheServiceTests.cs
+    └── Persistence/
+        └── TransactionRepositoryTests.cs
 ```
+
+**Test Coverage Hedefi:**
+- Domain Layer: 90%+
+- Application Layer: 85%+
+- API Controllers: 80%+
+- Infrastructure: 75%+
 
 ---
 
-## 🟡 ORTA ÖNCELİK - Hafta 2'de Yapılabilir (5 adet)
+### 2. Integration Tests Yok ❌
+**Dosya:** `tests/Integration.Tests/` (eksik)  
+**Durum:** End-to-end akışlar test edilmiyor  
+**Süre:** 12-16 saat  
+**Öncelik:** 🔴 Kritik
 
-### 6. Cache Invalidation Eksik ❌
-**Dosya:** `src/Transaction/Transaction.Api/Program.cs` ve `src/Support/Support.Bot/Program.cs`  
-**Sorun:** Transaction status değişince, eski cache kalıyor (stale data)  
+**Gerekli Test Senaryoları:**
+```csharp
+Integration.Tests/
+├── Flows/
+│   ├── HappyPathTransactionFlowTests.cs    // Transaction → Fraud → Approval
+│   ├── RejectedTransactionFlowTests.cs     // Transaction → Fraud → Rejection
+│   ├── VelocityCheckFlowTests.cs           // Multiple transactions → Velocity check
+│   └── TimelineTrackingFlowTests.cs        // Event timeline verification
+│
+├── Infrastructure/
+│   ├── DatabaseIntegrationTests.cs         // EF Core + PostgreSQL
+│   ├── RabbitMqIntegrationTests.cs         // MassTransit + RabbitMQ
+│   ├── RedisIntegrationTests.cs            // Cache operations
+│   └── ElasticsearchIntegrationTests.cs    // Logging
+│
+└── Fixtures/
+    ├── WebApplicationFactory.cs            // Test server setup
+    ├── DatabaseFixture.cs                  // Database setup/teardown
+    └── TestContainersFixture.cs           // Docker containers for tests
+```
+
+**Test Araçları:**
+- xUnit
+- Testcontainers (Docker-based testing)
+- FluentAssertions
+- Moq (mocking)
+
+---
+
+### 3. Cache Invalidation Eksik ❌
+**Dosya:** `src/Transaction/Transaction.Updater.Worker/Consumers/`  
+**Durum:** Transaction status değişince eski cache kalıyor (stale data)  
+**Süre:** 3-4 saat  
+**Öncelik:** 🔴 Kritik
+
+**Etkilenen Consumer'lar:**
+1. `TransactionApprovedConsumer.cs` - Line 50'den sonra ekle
+2. `TransactionRejectedConsumer.cs` - Line 51'den sonra ekle
+
 **Çözüm:**
 ```csharp
-// TransactionApprovedConsumer & TransactionRejectedConsumer
-// Bunlarda: await cache.InvalidateTransactionAsync(txId)
-// Support.Bot'ta incidents summary cache invalidate et
+// TransactionApprovedConsumer.cs
+public async Task Consume(ConsumeContext<TransactionApproved> context)
+{
+    // ... existing code ...
+    
+    tx.MarkApproved(context.Message.RiskScore, context.Message.Explanation);
+    await repo.Save(tx, context.CancellationToken);
+    
+    // 🆕 CACHE INVALIDATION EKLE
+    await cacheService.InvalidateTransactionAsync(
+        context.Message.TransactionId, 
+        context.CancellationToken);
+    
+    logger.LogInformation(\"Transaction cache invalidated | TxId={TxId}\", 
+        context.Message.TransactionId);
+    
+    await timeline.Append(...);
+    await uow.SaveChangesAsync(context.CancellationToken);
+}\n\n// TransactionRejectedConsumer.cs - aynı pattern
 ```
 
-### 7. Request Logging Middleware Eksik ❌
-**Dosya:** `src/Transaction/Transaction.Api/Middleware/RequestLoggingMiddleware.cs`  
-**Sorun:** HTTP request/response logging yok  
+**Test Senaryosu:**
+```csharp
+[Fact]
+public async Task Should_Invalidate_Cache_When_Transaction_Approved()
+{
+    // Arrange: Cache'e transaction yaz
+    await _cache.SetTransactionAsync(txId, transaction);
+    
+    // Act: TransactionApproved consume et
+    await _consumer.Consume(context);
+    
+    // Assert: Cache'te olmamalı
+    var cached = await _cache.GetTransactionAsync<object>(txId);
+    cached.Should().BeNull();
+}
+```
+
+---
+
+### 4. Performance Tests Eksik ❌
+**Dosya:** `tests/Performance.Tests/` (eksik)  
+**Durum:** Sistem yük altında test edilmemiş  
+**Süre:** 8-10 saat  
+**Öncelik:** 🔴 Kritik
+
+**Gerekli Testler:**
+```
+Performance.Tests/
+├── LoadTests/
+│   ├── TransactionApiLoadTests.cs      // 1000 req/sec
+│   ├── FraudWorkerLoadTests.cs         // Concurrent processing
+│   └── CachingLayerLoadTests.cs        // Redis performance
+│
+├── StressTests/
+│   ├── DatabaseStressTests.cs          // Connection pool
+│   ├── MessageBrokerStressTests.cs     // RabbitMQ limits
+│   └── EndToEndStressTests.cs          // Full system
+│
+└── BenchmarkTests/
+    ├── FraudRulesBenchmarks.cs         // Rule execution speed
+    ├── SerializationBenchmarks.cs      // JSON performance
+    └── CachingBenchmarks.cs            // Cache hit/miss rates
+```
+
+**Araçlar:**
+- NBomber (load testing)
+- BenchmarkDotNet (microbenchmarks)
+- k6 (HTTP load testing)
+
+**Hedef Metrikler:**
+- Transaction API: 500+ req/sec (p95 < 100ms)
+- Fraud Detection: 200+ msg/sec
+- Cache Hit Rate: 80%+
+- Database: 1000+ concurrent connections
+
+---
+
+## 🟡 ORTA ÖNCELİK - Hafta 2-3'te Yapılabilir (5 adet)
+
+> **Not:** Production sonrası ilk sprint'te eklenebilir.
+
+### 5. Rate Limiting Yok ❌
+**Dosya:** `src/Transaction/Transaction.Api/Program.cs`  
+**Durum:** API abuse'e açık  
+**Süre:** 4-5 saat  
+**Öncelik:** 🟡 Orta
+
 **Çözüm:**
 ```csharp
-// Log: Method, Path, StatusCode, ResponseTime, QueryParams
-// Use: Serilog.AspNetCore
-```
+// Program.cs - .NET 7+ Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    // Sliding window: 100 req/min per user
+    options.AddSlidingWindowLimiter(\"api\", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 100;
+        opt.SegmentsPerWindow = 4;
+        opt.QueueLimit = 10;
+    });
+    
+    // Concurrency: Max 10 parallel requests per user
+    options.AddConcurrencyLimiter(\"concurrent\", opt =>
+    {
+        opt.PermitLimit = 10;
+        opt.QueueLimit = 5;
+    });
+    
+    options.OnRejected = async (context, ct) =>
+    {
+        context.HttpContext.Response.StatusCode = 429;
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { error = \"Too many requests. Please try again later.\" }, ct);
+    };
+});\n\n// Apply to endpoints
+app.UseRateLimiter();\n\n[EnableRateLimiting(\"api\")]\n[HttpPost]\npublic async Task<ActionResult> Create(...)\n```
 
-### 8. Health Checks Eksik ❌
-**Dosya:** `src/Support/Support.Bot/Program.cs`  
-**Sorun:** Sadece `/health/live` ve `/health/ready` var, bileşen checks yok  
+**Test:**
+```bash\n# Should return 429 after 100 requests\nfor i in {1..150}; do curl -X POST http://localhost:5000/api/transaction; done\n```
+
+---
+
+### 6. Pagination Eksik ❌
+**Dosya:** Tüm GET endpoints  \n**Durum:** Large dataset'ler için performans sorunu  \n**Süre:** 6-8 saat  \n**Öncelik:** 🟡 Orta
+
+**Etkilenen Endpoint'ler:**
+- `GET /api/transaction` (list all - şu an yok)
+- `GET /support/incidents` (list incidents)
+- `GET /support/transactions/{id}/timeline` (timeline events)
+
 **Çözüm:**
 ```csharp
-// .AddCheck("redis", ...)
-// .AddCheck("database", ...)
-// .AddCheck("rabbitmq", ...) // zaten var ama Support.Bot'ta eksik
-```
+// DTO\npublic record PagedRequest(int Page = 1, int PageSize = 20);\npublic record PagedResponse<T>(
+    IReadOnlyList<T> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages\n);\n\n// Controller\n[HttpGet]\npublic async Task<ActionResult<PagedResponse<TransactionDto>>> GetAll(\n    [FromQuery] PagedRequest request)\n{\n    var (items, totalCount) = await _repo.GetPagedAsync(\n        request.Page, request.PageSize);\n    \n    return Ok(new PagedResponse<TransactionDto>(\n        items,\n        request.Page,\n        request.PageSize,\n        totalCount,\n        (int)Math.Ceiling(totalCount / (double)request.PageSize)\n    ));\n}\n\n// Repository\npublic async Task<(List<Transaction>, int)> GetPagedAsync(\n    int page, int pageSize)\n{\n    var query = _db.Transactions.AsQueryable();\n    \n    var total = await query.CountAsync();\n    var items = await query\n        .Skip((page - 1) * pageSize)\n        .Take(pageSize)\n        .ToListAsync();\n    \n    return (items, total);\n}\n```
 
-### 9. Circuit Breaker Pattern Eksik ❌
-**Dosya:** `src/Fraud/Fraud.Worker/Consumers/FraudCheckRequestedConsumer.cs`  
-**Sorun:** OpenAI timeout → tüm işlem fails  
+---
+
+### 7. Distributed Tracing Eksik ❌
+**Dosya:** Tüm projeler  \n**Durum:** Request tracing cross-service yok (sadece CorrelationId var)  \n**Süre:** 10-12 saat  \n**Öncelik:** 🟡 Orta
+
+**Çözüm: OpenTelemetry + Jaeger**
+
+**1. Package Ekle:**
+```xml\n<PackageReference Include=\"OpenTelemetry\" Version=\"1.7.0\" />\n<PackageReference Include=\"OpenTelemetry.Exporter.Jaeger\" Version=\"1.5.1\" />\n<PackageReference Include=\"OpenTelemetry.Instrumentation.AspNetCore\" Version=\"1.7.0\" />\n<PackageReference Include=\"OpenTelemetry.Instrumentation.Http\" Version=\"1.7.0\" />\n<PackageReference Include=\"OpenTelemetry.Instrumentation.EntityFrameworkCore\" Version=\"1.0.0-beta.10\" />\n```\n\n**2. Program.cs:**\n```csharp\nbuilder.Services.AddOpenTelemetry()\n    .WithTracing(tracerProvider =>\n    {\n        tracerProvider\n            .AddAspNetCoreInstrumentation()\n            .AddHttpClientInstrumentation()\n            .AddEntityFrameworkCoreInstrumentation()\n            .AddSource(\"MassTransit\")\n            .AddJaegerExporter(opt =>\n            {\n                opt.AgentHost = \"jaeger\";\n                opt.AgentPort = 6831;\n            });\n    });\n```\n\n**3. docker-compose.yml:**\n```yaml\njaeger:\n  image: jaegertracing/all-in-one:1.52\n  ports:\n    - \"5775:5775/udp\"\n    - \"6831:6831/udp\"\n    - \"16686:16686\"  # UI\n  environment:\n    - COLLECTOR_ZIPKIN_HOST_PORT=:9411\n```
+
+**Benefits:**\n- Request flow visualization\n- Performance bottleneck detection\n- Dependency mapping\n- Error tracking\n\n---
+
+### 8. API Versioning Yok ❌
+**Dosya:** `src/Transaction/Transaction.Api/Program.cs`  \n**Durum:** Breaking changes API'yi bozar  \n**Süre:** 3-4 saat  \n**Öncelik:** 🟡 Orta
+
 **Çözüm:**
-```csharp
-// Polly CircuitBreaker ekle
-// Max 3 hata → circuit açılır
-// Fallback açıklamaya düş
+```csharp\n// Package: Asp.Versioning.Http\nbuilder.Services.AddApiVersioning(options =>\n{\n    options.DefaultApiVersion = new ApiVersion(1, 0);\n    options.AssumeDefaultVersionWhenUnspecified = true;\n    options.ReportApiVersions = true;\n    options.ApiVersionReader = new UrlSegmentApiVersionReader();\n});\n\n// Controller\n[ApiVersion(\"1.0\")]\n[Route(\"api/v{version:apiVersion}/[controller]\")]\npublic class TransactionController : ControllerBase { }\n\n[ApiVersion(\"2.0\")]\n[Route(\"api/v{version:apiVersion}/[controller]\")]\npublic class TransactionV2Controller : ControllerBase { }\n```\n\n**Usage:**\n```bash\ncurl http://localhost:5000/api/v1/transaction\ncurl http://localhost:5000/api/v2/transaction\n```
+
+---
+
+### 9. Metrics & Monitoring Yok ❌
+**Dosya:** Tüm projeler  \n**Durum:** Production metrics eksik  \n**Süre:** 8-10 saat  \n**Öncelik:** 🟡 Orta
+
+**Çözüm: Prometheus + Grafana**
+
+**1. Package:**\n```xml\n<PackageReference Include=\"prometheus-net.AspNetCore\" Version=\"8.2.1\" />\n```\n\n**2. Custom Metrics:**\n```csharp\npublic class TransactionMetrics\n{\n    private static readonly Counter TransactionsCreated = Metrics\n        .CreateCounter(\"transactions_created_total\", \"Total transactions created\");\n    \n    private static readonly Counter TransactionsApproved = Metrics\n        .CreateCounter(\"transactions_approved_total\", \"Approved transactions\");\n    \n    private static readonly Histogram TransactionAmount = Metrics\n        .CreateHistogram(\"transaction_amount_usd\", \"Transaction amounts\",\n            new HistogramConfiguration\n            {\n                Buckets = new[] { 10, 50, 100, 500, 1000, 5000, 10000 }\n            });\n    \n    public void RecordCreated() => TransactionsCreated.Inc();\n    public void RecordApproved() => TransactionsApproved.Inc();\n    public void RecordAmount(decimal amount) => TransactionAmount.Observe((double)amount);\n}\n```\n\n**3. Expose Endpoint:**\n```csharp\napp.UseMetricServer();  // /metrics\napp.UseHttpMetrics();\n```\n\n**4. docker-compose.yml:**\n```yaml\nprometheus:\n  image: prom/prometheus:v2.48.1\n  ports:\n    - \"9090:9090\"\n  volumes:\n    - ./prometheus.yml:/etc/prometheus/prometheus.yml\n\ngrafana:\n  image: grafana/grafana:10.2.3\n  ports:\n    - \"3000:3000\"\n```
+
+---
+
+## 🟢 DÜŞÜK ÖNCELİK - İleriki Sprintlerde (6 adet)
+
+> **Not:** Production sonrası değer katacak özellikler.
+
+### 10. Batch Processing API ❌
+**Süre:** 12-15 saat  \n**Öncelik:** 🟢 Düşük
+
+**Özellik:**\n```csharp\n[HttpPost(\"batch\")]\npublic async Task<ActionResult> CreateBatch(\n    [FromBody] List<CreateTransactionRequest> requests)\n{\n    // Bulk insert + async processing\n    // Return: batch ID for tracking\n}\n\n[HttpGet(\"batch/{batchId}/status\")]\npublic async Task<ActionResult> GetBatchStatus(Guid batchId)\n{\n    // Return: processed count, failed count, status\n}\n```
+
+---
+
+### 11. Webhook Notifications ❌
+**Süre:** 10-12 saat  \n**Öncelik:** 🟢 Düşük
+
+**Özellik:**\n- Transaction approved → POST to merchant webhook\n- Transaction rejected → POST to merchant webhook\n- Retry mechanism (3 attempts)\n- Webhook signature (HMAC-SHA256)\n\n---
+
+### 12. Admin Dashboard ❌
+**Süre:** 40-50 saat  \n**Öncelik:** 🟢 Düşük\n**Stack:** React + TypeScript + TailwindCSS\n\n**Özellikler:**\n- Real-time transaction monitoring\n- Fraud detection statistics\n- System health dashboard\n- User management\n- Configuration management\n\n---\n\n### 13. Transaction Search API ❌\n**Süre:** 8-10 saat  \n**Öncelik:** 🟢 Düşük\n\n**Özellik:**\n```csharp\n[HttpGet(\"search\")]\npublic async Task<ActionResult> Search(\n    [FromQuery] TransactionSearchRequest request)\n{\n    // Search by: userId, merchantId, amount range, date range, status\n    // Return: paged results\n}\n```
+
+---
+
+### 14. Fraud Rules Management UI ❌\n**Süre:** 20-25 saat  \n**Öncelik:** 🟢 Düşük\n\n**Özellikler:**\n- Dynamic rule configuration\n- Risk score threshold adjustment\n- Merchant blacklist/whitelist management\n- Country risk score management\n- Rule enable/disable toggle\n\n---\n\n### 15. Real-time Alerts ❌\n**Süre:** 15-18 saat  \n**Öncelik:** 🟢 Düşük\n**Stack:** SignalR\n\n**Özellikler:**\n- High-risk transaction alerts\n- System health alerts\n- Fraud pattern detection alerts\n- Email/SMS notifications"
+
+---
+
+## � Detaylı Tamamlanma Takvimi
+
+### Hafta 1: Testing & Quality (40-50 saat)
+| Görev | Süre | Öncelik | Sorumlu |
+|-------|------|---------|---------|
+| Unit Tests (Domain, Application, API) | 20-24h | 🔴 Kritik | Backend Team |
+| Integration Tests | 12-16h | 🔴 Kritik | Backend Team |
+| Cache Invalidation | 3-4h | 🔴 Kritik | Backend Team |
+| Performance Tests | 8-10h | 🔴 Kritik | QA Team |
+
+**Deliverables:**
+- ✅ Test coverage > 80%
+- ✅ All critical bugs fixed
+- ✅ Cache consistency ensured
+- ✅ Performance baseline established
+
+---
+
+### Hafta 2: Production Readiness (25-30 saat)
+| Görev | Süre | Öncelik | Sorumlu |
+|-------|------|---------|---------|
+| Rate Limiting | 4-5h | 🟡 Orta | Backend Team |
+| Pagination | 6-8h | 🟡 Orta | Backend Team |
+| API Versioning | 3-4h | 🟡 Orta | Backend Team |
+| Distributed Tracing | 10-12h | 🟡 Orta | DevOps Team |
+
+**Deliverables:**
+- ✅ API protection mechanisms
+- ✅ Scalable query endpoints
+- ✅ Backward compatibility support
+- ✅ Full request tracing
+
+---
+
+### Hafta 3: Advanced Monitoring (15-20 saat)
+| Görev | Süre | Öncelik | Sorumlu |
+|-------|------|---------|---------|
+| Prometheus Metrics | 8-10h | 🟡 Orta | DevOps Team |
+| Grafana Dashboards | 7-10h | 🟡 Orta | DevOps Team |
+
+**Deliverables:**
+- ✅ Custom business metrics
+- ✅ Real-time monitoring dashboards
+- ✅ Alert rules configured
+
+---
+
+### Hafta 4+: Nice-to-Have Features (120+ saat)
+| Görev | Süre | Öncelik | Sorumlu |
+|-------|------|---------|---------|
+| Batch Processing API | 12-15h | 🟢 Düşük | Backend Team |
+| Webhook Notifications | 10-12h | 🟢 Düşük | Backend Team |
+| Transaction Search API | 8-10h | 🟢 Düşük | Backend Team |
+| Real-time Alerts (SignalR) | 15-18h | 🟢 Düşük | Backend Team |
+| Fraud Rules Management UI | 20-25h | 🟢 Düşük | Frontend Team |
+| Admin Dashboard | 40-50h | 🟢 Düşük | Frontend Team |
+
+---
+
+## ✅ Tamamlanmış Özellikler (Referans)
+
+### Core Microservices (5/5) ✅
+- ✅ Transaction.Api - REST API (Port 5000)
+- ✅ Transaction.Orchestrator.Worker - Saga orchestration (Port 5020)
+- ✅ Transaction.Updater.Worker - Status updates (Port 5030)
+- ✅ Fraud.Worker - Fraud detection (Port 5010)
+- ✅ Support.Bot - Support API (Port 5040)
+
+### Infrastructure (5/5) ✅
+- ✅ PostgreSQL 16 - Database
+- ✅ RabbitMQ 3.13 - Message broker
+- ✅ Redis 7 - Caching
+- ✅ Elasticsearch 8.13 - Logging
+- ✅ Kibana 8.13 - Log visualization
+
+### Core Features (18/18) ✅
+1. ✅ Domain-Driven Design implementation
+2. ✅ CQRS with MediatR
+3. ✅ Saga Pattern (MassTransit)
+4. ✅ Outbox Pattern (reliable messaging)
+5. ✅ Inbox Pattern (idempotency)
+6. ✅ JWT Authentication & Authorization
+7. ✅ Role-based access control
+8. ✅ Global Exception Handling
+9. ✅ FluentValidation (input validation)
+10. ✅ Request/Response Logging
+11. ✅ Structured Logging (Serilog)
+12. ✅ Correlation ID tracking
+13. ✅ Health Checks (liveness/readiness)
+14. ✅ IP Address tracking
+15. ✅ Circuit Breaker Pattern (Polly)
+16. ✅ Redis Caching (3 strategies)
+17. ✅ EF Core + Migrations
+18. ✅ Docker Compose setup
+
+### Fraud Detection (4/4) ✅
+- ✅ High Amount Rule (> $10,000)
+- ✅ Merchant Risk Rule (Redis SET)
+- ✅ Geographic Risk Rule (Redis HASH)
+- ✅ Velocity Check Rule (Redis STRING + LIST)
+- ✅ AI Explanation Generator (OpenAI + Claude fallback)
+- ✅ Velocity Check Cleanup Service
+
+### API Endpoints (6/6) ✅
+**Transaction API:**
+- ✅ POST /api/transaction - Create transaction
+- ✅ GET /api/transaction/{id} - Get transaction (cached 10min)
+- ✅ POST /api/auth/login - JWT login
+
+**Support API:**
+- ✅ GET /support/transactions/{id} - Transaction report (cached 10min)
+- ✅ GET /support/incidents/summary - Incident summary (cached 30min)
+
+**Health:**
+- ✅ GET /health/live - Liveness probe
+- ✅ GET /health/ready - Readiness probe
+
+---
+
+## 🎯 Production Checklist
+
+### Must-Have (Before Production)
+- [ ] Unit Tests (80% coverage)
+- [ ] Integration Tests
+- [ ] Cache Invalidation
+- [ ] Performance Tests
+- [ ] Load Tests
+- [ ] Security Audit
+- [ ] Documentation Review
+
+### Should-Have (First Month)
+- [ ] Rate Limiting
+- [ ] Pagination
+- [ ] API Versioning  
+- [ ] Distributed Tracing
+- [ ] Prometheus Metrics
+- [ ] Grafana Dashboards
+
+### Nice-to-Have (Backlog)
+- [ ] Batch Processing
+- [ ] Webhooks
+- [ ] Transaction Search
+- [ ] Real-time Alerts
+- [ ] Fraud Rules UI
+- [ ] Admin Dashboard
+
+---
+
+## 📈 Estimated Total Effort
+
+| Category | Hours | Status |
+|----------|-------|--------|
+| **Testing** | 40-50 | ❌ Not Started |
+| **Production Features** | 25-30 | ❌ Not Started |
+| **Monitoring** | 15-20 | ❌ Not Started |
+| **Nice-to-Have** | 120+ | ❌ Not Started |
+| **Total** | **200-220** | - |
+
+**Team Size:** 3-4 developers  
+**Timeline:** 6-8 weeks  
+**Current Completion:** 90%  
+**Remaining Work:** 10% (critical path)
+
+---
+
+## 🚀 Quick Start for Contributors
+
+### 1. Clone & Setup
+```bash
+git clone <repo-url>
+cd AiTransactionOrchestrator
+docker-compose up -d
 ```
 
-### 10. Docker Compose'ta 2 Service Eksik ❌
-**Dosya:** `docker-compose.yml`  
-**Sorun:** `Transaction.Orchestrator.Worker` ve `Transaction.Updater.Worker` yok  
-**Çözüm:**
-```yaml
-transaction-orchestrator:
-  build:
-    context: .
-    dockerfile: Dockerfile.transaction-orchestrator
-  # ... (other services gibi config)
-
-transaction-updater:
-  build:
-    context: .
-    dockerfile: Dockerfile.transaction-updater
-  # ... (other services gibi config)
+### 2. Run Existing Tests (When Added)
+```bash
+dotnet test
+dotnet test /p:CollectCoverage=true
 ```
 
----
-
-## 🟢 GÜZEL OLURDU - Ek Özellikler (10 adet)
-
-### 11-20. Nice-to-Have Features
-1. **API Versioning** - Future compatibility
-2. **Pagination** - GET endpoints için
-3. **Transaction Search API** - Customer tarafından sorgulama
-4. **Batch Processing** - Bulk transaction upload
-5. **Webhook Notifications** - Real-time updates
-6. **Admin Dashboard** - System monitoring
-7. **Distributed Tracing** - Jaeger/Zipkin
-8. **Fraud Rules Management UI** - Dynamic rules
-9. **Real-time Alerts** - Fraud notifications
-10. **Retry Policy Editor** - Saga configuration
+### 3. Check Documentation
+- [ARCHITECTURE.md](ARCHITECTURE.md) - System design
+- [PROJECT_ANALYSIS.md](PROJECT_ANALYSIS.md) - Component details
+- [AUTHENTICATION_GUIDE.md](AUTHENTICATION_GUIDE.md) - JWT setup
 
 ---
 
-## 📊 Özet Tablo
-
-| # | Başlık | Dosya | Severity | Tahmini Süre |
-|---|--------|-------|----------|--------------|
-| 1 | Exception Handler | `Middleware/ExceptionHandlerMiddleware.cs` | 🔴 | 1-2 saat |
-| 2 | Input Validation | `Validators/*.cs` | 🔴 | 2-3 saat |
-| 3 | Customer IP | `FraudCheckRequestedConsumer.cs` | 🔴 | 1-2 saat |
-| 4 | Velocity Check User ID | `FraudCheckRequestedConsumer.cs` | 🔴 | 1 saat |
-| 5 | Unit Tests | `Tests/` | 🔴 | 8-10 saat |
-| 6 | Cache Invalidation | `Consumers/*.cs` | 🟡 | 2-3 saat |
-| 7 | Request Logging | `Middleware/RequestLoggingMiddleware.cs` | 🟡 | 1 saat |
-| 8 | Health Checks | `Program.cs` (Support.Bot) | 🟡 | 1-2 saat |
-| 9 | Circuit Breaker | `FraudCheckRequestedConsumer.cs` | 🟡 | 2 saat |
-| 10 | Docker Compose | `docker-compose.yml` | 🟡 | 2-3 saat |
-| 11-20 | Nice-to-Have | Various | 🟢 | 20+ saat |
-
----
-
-## ✅ Yapılmış İşler
-
-- ✅ 5 Microservice (tamamlanmış)
-- ✅ 4 Fraud Detection Rules
-- ✅ Redis Caching (STRING, SET, HASH)
-- ✅ 4 API Endpoints
-- ✅ Saga Pattern (Orchestrator)
-- ✅ Domain-Driven Design
-- ✅ Outbox/Inbox Pattern
-- ✅ Elasticsearch + Kibana Logging
-- ✅ Docker Compose Infrastructure
-
----
-
-## 🎯 Production Timeline
-
-**Current Status:** 85% Complete
-
-**Hafta 1 - Kritik Fixler:**
-- Exception Handler
-- Input Validation
-- IP Flow Fix
-- Velocity Check Fix
-- Unit Tests (50+)
-
-**Hafta 2 - Orta Önemli:**
-- Cache Invalidation
-- Request Logging
-- Health Checks
-- Circuit Breaker
-- Integration Tests
-
-**Hafta 3 - Production:**
-- Security (Auth, Rate Limit)
-- Performance Testing
-- Load Testing
+**Last Updated:** February 9, 2026  
+**Status:** 90% Complete - Production Path Defined  
+**Next Sprint:** Week 1 - Testing & Quality
 - Deployment
 
 **Total Estimated:** 2 hafta → Production Ready
