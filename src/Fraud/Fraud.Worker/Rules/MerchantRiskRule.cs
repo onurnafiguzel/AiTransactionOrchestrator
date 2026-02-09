@@ -4,28 +4,32 @@ namespace Fraud.Worker.Rules;
 
 /// <summary>
 /// Merchant'ı Redis-backed blacklist/whitelist'e karşı kontrol et
+/// 
+/// UserId kullanımı:
+/// - User-specific merchant restrictions (kullanıcı belirli satıcılarla işlem yapamaz)
+/// - User merchant preferences (tercih edilen satıcılar)
+/// - Redis: user:merchant:blacklist:{userId} → SET of merchant IDs
+/// - Redis: user:merchant:whitelist:{userId} → SET of trusted merchants
 /// </summary>
-public sealed class MerchantRiskRule : IFraudDetectionRule
+public sealed class MerchantRiskRule(
+    IMerchantRiskCacheService merchantCache,
+    ILogger<MerchantRiskRule> logger) : IFraudDetectionRule
 {
-    private readonly IMerchantRiskCacheService _merchantCache;
-    private readonly ILogger<MerchantRiskRule> _logger;
-
     public string RuleName => "MerchantRiskAssessment";
-
-    public MerchantRiskRule(
-        IMerchantRiskCacheService merchantCache,
-        ILogger<MerchantRiskRule> logger)
-    {
-        _merchantCache = merchantCache;
-        _logger = logger;
-    }
 
     public async Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
     {
-        // Check blacklist (Redis SET)
-        if (await _merchantCache.IsBlacklistedAsync(context.MerchantId, ct))
+        // TODO: Check user-specific merchant blacklist
+        // var isUserBlacklisted = await _userMerchantCache
+        //     .IsBlacklistedForUserAsync(context.UserId, context.MerchantId, ct);
+        // if (isUserBlacklisted) return FraudRuleResult(...);
+
+        // Check global merchant blacklist (Redis SET)
+        if (await merchantCache.IsBlacklistedAsync(context.MerchantId, ct))
         {
-            _logger.LogWarning("Blacklisted merchant detected: {MerchantId}", context.MerchantId);
+            logger.LogWarning(
+                "Blacklisted merchant detected for user {UserId}: {MerchantId}",
+                context.UserId, context.MerchantId);
             return new FraudRuleResult(
                 RuleName,
                 IsFraud: true,
@@ -33,10 +37,12 @@ public sealed class MerchantRiskRule : IFraudDetectionRule
                 Reason: "Merchant is blacklisted");
         }
 
-        // Check whitelist (Redis SET)
-        if (await _merchantCache.IsWhitelistedAsync(context.MerchantId, ct))
+        // Check global merchant whitelist (Redis SET)
+        if (await merchantCache.IsWhitelistedAsync(context.MerchantId, ct))
         {
-            _logger.LogDebug("Whitelisted merchant: {MerchantId}", context.MerchantId);
+            logger.LogDebug(
+                "Whitelisted merchant for user {UserId}: {MerchantId}",
+                context.UserId, context.MerchantId);
             return new FraudRuleResult(
                 RuleName,
                 IsFraud: false,

@@ -8,6 +8,7 @@ public interface IFraudDetectionRule
 
 public sealed record FraudDetectionContext(
     Guid TransactionId,
+    Guid UserId,
     string MerchantId,
     decimal Amount,
     string Currency,

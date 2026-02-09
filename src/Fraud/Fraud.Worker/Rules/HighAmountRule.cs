@@ -2,6 +2,12 @@ namespace Fraud.Worker.Rules;
 
 /// <summary>
 /// Büyük işlem tutarını kontrol et
+/// İşlem tutarı belirli eşik değerleri aşarsa flag et.
+/// 
+/// UserId kullanımı:
+/// - Per-user amount thresholds (premium kullanıcılar daha yüksek limitler)
+/// - User daily/monthly spending patterns
+/// - Redis: PUT user:threshold:{userId} → amount
 /// </summary>
 public sealed class HighAmountRule : IFraudDetectionRule
 {
@@ -12,6 +18,10 @@ public sealed class HighAmountRule : IFraudDetectionRule
 
     public Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
     {
+        // TODO: Redis'ten user-specific thresholds'ı al
+        // var userThreshold = await _userThresholdCache.GetAsync(context.UserId, ct) 
+        //     ?? VeryHighAmountThreshold;
+
         if (context.Amount >= VeryHighAmountThreshold)
         {
             return Task.FromResult(new FraudRuleResult(

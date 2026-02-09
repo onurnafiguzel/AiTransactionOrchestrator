@@ -16,7 +16,7 @@ public class VelocityCheckRule(IVelocityCheckService velocityCheckService) : IFr
     public async Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
     {
         var rejectedCount = await velocityCheckService.GetRejectedTransactionCountAsync(
-            context.MerchantId, ct);
+            context.UserId.ToString(), ct);
 
         if (rejectedCount >= RejectionThreshold)
         {

@@ -4,25 +4,21 @@ namespace Fraud.Worker.Rules;
 
 /// <summary>
 /// Coğrafi risk taraması - Redis-backed ülke risk skorlarını kullanarak kontrol et
+/// 
+/// UserId kullanımı:
+/// - User-specific country restrictions (kullanıcılar belirli ülkelerde işlem yapamaz)
+/// - User travel patterns (kullanıcının daha önceki işlemleri hangi ülkelerden?)
+/// - Redis: user:restricted:countries:{userId} → SET of forbidden countries
 /// </summary>
-public sealed class GeographicRiskRule : IFraudDetectionRule
+public sealed class GeographicRiskRule(
+    IGeographicRiskCacheService geoCache,
+    ILogger<GeographicRiskRule> logger) : IFraudDetectionRule
 {
-    private readonly IGeographicRiskCacheService _geoCache;
-    private readonly ILogger<GeographicRiskRule> _logger;
-
     private const int HighRiskThreshold = 70;
     private const int DefaultUnknownCountryRisk = 25;
     private const int DefaultMissingCountryRisk = 20;
 
     public string RuleName => "GeographicRiskAssessment";
-
-    public GeographicRiskRule(
-        IGeographicRiskCacheService geoCache,
-        ILogger<GeographicRiskRule> logger)
-    {
-        _geoCache = geoCache;
-        _logger = logger;
-    }
 
     public async Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
     {
@@ -35,12 +31,17 @@ public sealed class GeographicRiskRule : IFraudDetectionRule
                 Reason: "Country information unavailable");
         }
 
-        // Get risk score from Redis HASH
-        var riskScore = await _geoCache.GetCountryRiskScoreAsync(context.CustomerCountry, ct);
+        // TODO: Check user-specific country restrictions
+        // var isRestrictedCountry = await _userGeoCache
+        //     .IsRestrictedAsync(context.UserId, context.CustomerCountry, ct);
+        // if (isRestrictedCountry) return FraudRuleResult(...IsFraud: true...);
+
+        // Get risk score from Redis HASH (global country risks)
+        var riskScore = await geoCache.GetCountryRiskScoreAsync(context.CustomerCountry, ct);
 
         if (!riskScore.HasValue)
         {
-            _logger.LogDebug("Country {Country} not in cache, using default risk", context.CustomerCountry);
+            logger.LogDebug("Country {Country} not in cache, using default risk", context.CustomerCountry);
             return new FraudRuleResult(
                 RuleName,
                 IsFraud: false,
@@ -58,8 +59,8 @@ public sealed class GeographicRiskRule : IFraudDetectionRule
 
         if (isFraud)
         {
-            _logger.LogWarning("High-risk country detected: {Country} (Score: {Score})",
-                context.CustomerCountry, riskScore.Value);
+            logger.LogWarning("High-risk country detected for user {UserId}: {Country} (Score: {Score})",
+                context.UserId, context.CustomerCountry, riskScore.Value);
         }
 
         return new FraudRuleResult(

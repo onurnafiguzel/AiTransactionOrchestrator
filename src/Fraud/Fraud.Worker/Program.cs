@@ -34,9 +34,21 @@ builder.Services.AddSingleton<IVelocityCheckService, RedisVelocityCheckService>(
 builder.Services.AddHostedService<VelocityCheckCleanupHostedService>();
 
 // Fraud Detection Rules
+// Amount-based rules
 builder.Services.AddScoped<IFraudDetectionRule, HighAmountRule>();
+builder.Services.AddScoped<IFraudDetectionRule, UserDailyLimitRule>();
+
+// Merchant-based rules
 builder.Services.AddScoped<IFraudDetectionRule, MerchantRiskRule>();
+
+// Geographic-based rules
 builder.Services.AddScoped<IFraudDetectionRule, GeographicRiskRule>();
+builder.Services.AddScoped<IFraudDetectionRule, UserLocationAnomalyRule>();
+
+// User-based rules
+builder.Services.AddScoped<IFraudDetectionRule, UserRiskRule>();
+
+// Velocity-based rules (userId powered)
 builder.Services.AddScoped<IFraudDetectionRule>(sp => 
     new VelocityCheckRule(sp.GetRequiredService<IVelocityCheckService>()));
 

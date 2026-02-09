@@ -28,6 +28,7 @@ public sealed class FraudCheckRequestedConsumer(
         // Advanced fraud detection - tüm rule'ları çalıştır
         var fraudContext = new FraudDetectionContext(
             TransactionId: msg.TransactionId,
+            UserId: msg.UserId,
             MerchantId: msg.MerchantId,
             Amount: msg.Amount,
             Currency: msg.Currency,
@@ -70,13 +71,13 @@ public sealed class FraudCheckRequestedConsumer(
         if (decision == "Reject")
         {
             await velocityCheckService.RecordRejectedTransactionAsync(
-                userId: msg.MerchantId, // TODO: Gerçek User ID kullan
+                userId: msg.UserId.ToString(),
                 amount: msg.Amount,
                 merchant: msg.MerchantId,
                 country: fraudContext.CustomerCountry ?? "Unknown");
                 
             logger.LogWarning("Transaction rejected - recorded for velocity check. UserId: {UserId}",
-                msg.MerchantId);
+                msg.UserId);
         }
 
         await context.Publish(new FraudCheckCompleted(
