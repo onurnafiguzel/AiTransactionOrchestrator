@@ -2,6 +2,7 @@
 using BuildingBlocks.Contracts.Transactions;
 using MassTransit;
 using Transaction.Application.Abstractions;
+using Transaction.Infrastructure.Caching;
 using Transaction.Infrastructure.Inbox;
 using Transaction.Infrastructure.Persistence;
 using Transaction.Updater.Worker.Timeline;
@@ -14,6 +15,7 @@ public sealed class TransactionApprovedConsumer(
     InboxGuard guard,
     TimelineWriter timeline,
     IUnitOfWork uow,
+    ITransactionCacheService cacheService,
     ILogger<TransactionApprovedConsumer> logger)
     : IConsumer<TransactionApproved>
 {
@@ -32,7 +34,6 @@ public sealed class TransactionApprovedConsumer(
         using (Serilog.Context.LogContext.PushProperty("message_id", messageId))
         using (Serilog.Context.LogContext.PushProperty("transaction_id", context.Message.TransactionId))
         {
-
             if (!await guard.TryBeginAsync(messageId, context.CancellationToken))
             {
                 logger.LogInformation("Duplicate message ignored. MessageId={MessageId}", messageId);
@@ -58,6 +59,9 @@ public sealed class TransactionApprovedConsumer(
                     ct: context.CancellationToken);
 
             await uow.SaveChangesAsync(context.CancellationToken);
+
+            // Cache invalidation
+            await cacheService.InvalidateTransactionAsync(context.Message.TransactionId, context.CancellationToken);
 
             logger.LogInformation("Transaction approved updated in DB.");
         }

@@ -1,8 +1,8 @@
 ﻿using BuildingBlocks.Contracts.Observability;
 using BuildingBlocks.Contracts.Transactions;
 using MassTransit;
-using Serilog.Context;
 using Transaction.Application.Abstractions;
+using Transaction.Infrastructure.Caching;
 using Transaction.Infrastructure.Inbox;
 using Transaction.Infrastructure.Persistence;
 using Transaction.Updater.Worker.Timeline;
@@ -15,6 +15,7 @@ public sealed class TransactionRejectedConsumer(
     InboxGuard guard,
     TimelineWriter timeline,
     IUnitOfWork uow,
+    ITransactionCacheService cacheService,
     ILogger<TransactionRejectedConsumer> logger)
     : IConsumer<TransactionRejected>
 {
@@ -58,6 +59,9 @@ public sealed class TransactionRejectedConsumer(
                 context.CancellationToken);
 
             await uow.SaveChangesAsync(context.CancellationToken);
+
+            // Cache invalidation
+            await cacheService.InvalidateTransactionAsync(context.Message.TransactionId, context.CancellationToken);
 
             logger.LogInformation("Transaction rejected updated in DB. Reason={Reason}", context.Message.Reason);
         }
