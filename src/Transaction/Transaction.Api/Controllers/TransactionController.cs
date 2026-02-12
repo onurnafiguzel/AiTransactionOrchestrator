@@ -2,6 +2,7 @@ using BuildingBlocks.Contracts.Observability;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using Transaction.Application.Abstractions;
 using Transaction.Application.Transactions;
@@ -32,8 +33,10 @@ public sealed class TransactionController(
     /// <response code="201">Transaction created successfully</response>
     /// <response code="400">Invalid request parameters</response>
     /// <response code="401">Unauthorized - JWT token required</response>
+    /// <response code="429">Too many requests - rate limit exceeded</response>
     /// <response code="500">Internal server error</response>
     [HttpPost]
+    [EnableRateLimiting("transaction-create")]
     public async Task<ActionResult> Create(
         [FromBody] CreateTransactionRequest request,
         CancellationToken cancellationToken)
@@ -93,8 +96,10 @@ public sealed class TransactionController(
     /// <returns>Transaction details (cached for 10 minutes)</returns>
     /// <response code="200">Transaction found</response>
     /// <response code="404">Transaction not found</response>
+    /// <response code="429">Too many requests - rate limit exceeded</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("{id:guid}")]
+    [EnableRateLimiting("transaction-query")]
     public async Task<ActionResult> GetById(
         Guid id,
         CancellationToken cancellationToken)
@@ -140,6 +145,7 @@ public sealed class TransactionController(
 
 
     [HttpPost("debug")]
+    [EnableRateLimiting("transaction-query")]
     public IActionResult DebugAuth()
     {
     var authHeader = HttpContext.Request.Headers["Authorization"].ToString();

@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Transaction.Application.Users;
 
 namespace Transaction.Api.Controllers;
@@ -23,8 +24,10 @@ public sealed class AuthController(
     /// <returns>Created user ID</returns>
     /// <response code="201">User created successfully</response>
     /// <response code="400">Invalid request or email already exists</response>
+    /// <response code="429">Too many requests - rate limit exceeded</response>
     [HttpPost("signup")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult> SignUp(
         [FromBody] SignUpRequest request,
         CancellationToken cancellationToken)
@@ -52,8 +55,10 @@ public sealed class AuthController(
     /// <returns>JWT Token and user info</returns>
     /// <response code="200">Login successful</response>
     /// <response code="401">Invalid credentials</response>
+    /// <response code="429">Too many requests - rate limit exceeded</response>
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<LoginResult>> Login(
         [FromBody] LoginRequest request,
         CancellationToken cancellationToken)

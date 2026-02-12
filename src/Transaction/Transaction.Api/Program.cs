@@ -1,12 +1,15 @@
 using BuildingBlocks.Observability;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using StackExchange.Redis;
+using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 using Transaction.Api.Middleware;
 using Transaction.Api.Outbox;
 using Transaction.Application;
@@ -99,6 +102,91 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Rate Limiting - User-based (per JWT token userId)
+builder.Services.AddRateLimiter(options =>
+{
+    // Fixed Window - Transaction Creation: 10 requests per minute PER USER
+    options.AddPolicy("transaction-create", context =>
+    {
+        var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                  ?? context.User.FindFirst("sub")?.Value
+                  ?? context.Connection.RemoteIpAddress?.ToString()
+                  ?? "anonymous";
+
+        return RateLimitPartition.GetFixedWindowLimiter(userId, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 2
+        });
+    });
+
+    // Sliding Window - Transaction Query: 100 requests per minute PER USER
+    options.AddPolicy("transaction-query", context =>
+    {
+        var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                  ?? context.User.FindFirst("sub")?.Value
+                  ?? context.Connection.RemoteIpAddress?.ToString()
+                  ?? "anonymous";
+
+        return RateLimitPartition.GetSlidingWindowLimiter(userId, _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = 100,
+            Window = TimeSpan.FromMinutes(1),
+            SegmentsPerWindow = 6,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 5
+        });
+    });
+
+    // Token Bucket - Auth endpoints: 5 requests per 10 seconds PER IP (no user yet)
+    options.AddPolicy("auth", context =>
+    {
+        var partitionKey = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        return RateLimitPartition.GetTokenBucketLimiter(partitionKey, _ => new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = 5,
+            ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+            TokensPerPeriod = 2,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 1
+        });
+    });
+
+    // Concurrency Limiter - Global: Max 1000 concurrent requests
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        return RateLimitPartition.GetConcurrencyLimiter("global", _ => new ConcurrencyLimiterOptions
+        {
+            PermitLimit = 1000,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 100
+        });
+    });
+
+    // Default policy - 429 response
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        
+        TimeSpan? retryAfter = null;
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfterValue))
+        {
+            retryAfter = retryAfterValue;
+            context.HttpContext.Response.Headers.RetryAfter = ((int)retryAfterValue.TotalSeconds).ToString();
+        }
+
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            error = "Too many requests",
+            message = "Rate limit exceeded. Please try again later.",
+            retryAfterSeconds = retryAfter.HasValue ? (int)retryAfter.Value.TotalSeconds : (int?)null
+        }, cancellationToken);
+    };
+});
+
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 var multiplexer = ConnectionMultiplexer.Connect(redisConnectionString);
 builder.Services.AddSingleton<IConnectionMultiplexer>(multiplexer);
@@ -157,6 +245,7 @@ app.UseMiddleware<RequestResponseLoggingMiddleware>();
 app.UseMiddleware<ExceptionHandlerMiddleware>();
 app.UseCors("AllowAll");
 app.UseRouting();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
