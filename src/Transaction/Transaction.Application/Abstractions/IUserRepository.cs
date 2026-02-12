@@ -12,4 +12,10 @@ public interface IUserRepository
     Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default);
     Task AddAsync(User user, CancellationToken cancellationToken = default);
     void Update(User user);
+    Task<(List<User> Items, int TotalCount)> GetAllPagedAsync(
+        int skip,
+        int take,
+        string? sortBy,
+        string sortDirection,
+        CancellationToken cancellationToken = default);
 }

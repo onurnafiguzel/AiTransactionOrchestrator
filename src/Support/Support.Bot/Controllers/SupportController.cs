@@ -1,3 +1,4 @@
+using BuildingBlocks.Contracts.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Support.Bot.Caching;
@@ -178,5 +179,42 @@ public sealed class SupportController(
             windowMinutes);
 
         return Ok(summary);
+    }
+
+    /// <summary>
+    /// Get all transactions with pagination for support purposes
+    /// </summary>
+    /// <param name="request">Pagination request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Paginated list of all transactions</returns>
+    /// <response code="200">Transactions retrieved successfully</response>
+    /// <response code="500">Internal server error</response>
+    [HttpGet("transactions")]
+    public async Task<ActionResult<PagedResponse<TransactionListRow>>> GetAllTransactions(
+        [FromQuery] PagedRequest request,
+        CancellationToken cancellationToken)
+    {
+        var normalized = request.Normalize();
+
+        var (items, totalCount) = await repository.GetAllTransactionsPaged(
+            normalized.Skip,
+            normalized.PageSize,
+            normalized.SortBy,
+            normalized.SortDirection,
+            cancellationToken);
+
+        var response = new PagedResponse<TransactionListRow>(
+            items,
+            normalized.Page,
+            normalized.PageSize,
+            totalCount);
+
+        logger.LogInformation(
+            "Support transactions retrieved | Page={Page} PageSize={PageSize} TotalCount={TotalCount}",
+            normalized.Page,
+            normalized.PageSize,
+            totalCount);
+
+        return Ok(response);
     }
 }

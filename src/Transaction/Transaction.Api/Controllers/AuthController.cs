@@ -1,7 +1,9 @@
+using BuildingBlocks.Contracts.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Transaction.Application.Abstractions;
 using Transaction.Application.Users;
 
 namespace Transaction.Api.Controllers;
@@ -14,6 +16,7 @@ namespace Transaction.Api.Controllers;
 [Produces("application/json")]
 public sealed class AuthController(
     ISender mediator,
+    IUserRepository userRepository,
     ILogger<AuthController> logger) : ControllerBase
 {
     /// <summary>
@@ -121,6 +124,59 @@ public sealed class AuthController(
             email,
             role
         });
+    }
+
+    /// <summary>
+    /// Get all users with pagination (Admin only)
+    /// </summary>
+    /// <param name="request">Pagination request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Paginated list of users</returns>
+    /// <response code="200">Users retrieved successfully</response>
+    /// <response code="401">Unauthorized</response>
+    /// <response code="403">Forbidden - Admin role required</response>
+    /// <response code="500">Internal server error</response>
+    [HttpGet("users")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<ActionResult<PagedResponse<object>>> GetAllUsers(
+        [FromQuery] PagedRequest request,
+        CancellationToken cancellationToken)
+    {
+        var normalized = request.Normalize();
+
+        var (items, totalCount) = await userRepository.GetAllPagedAsync(
+            normalized.Skip,
+            normalized.PageSize,
+            normalized.SortBy,
+            normalized.SortDirection,
+            cancellationToken);
+
+        var dtos = items.Select(u => new
+        {
+            u.Id,
+            u.Email,
+            u.FullName,
+            u.Role,
+            u.Status,
+            u.IsDeleted,
+            u.CreatedAtUtc,
+            u.UpdatedAtUtc,
+            u.LastLoginAtUtc
+        }).ToList();
+
+        var response = new PagedResponse<object>(
+            dtos,
+            normalized.Page,
+            normalized.PageSize,
+            totalCount);
+
+        logger.LogInformation(
+            "Users retrieved | Page={Page} PageSize={PageSize} TotalCount={TotalCount}",
+            normalized.Page,
+            normalized.PageSize,
+            totalCount);
+
+        return Ok(response);
     }
 }
 

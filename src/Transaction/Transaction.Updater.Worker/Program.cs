@@ -2,7 +2,9 @@ using BuildingBlocks.Observability;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using StackExchange.Redis;
 using Transaction.Infrastructure;
+using Transaction.Infrastructure.Caching;
 using Transaction.Updater.Worker.Consumers;
 using Transaction.Updater.Worker.Health;
 
@@ -49,7 +51,11 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
-builder.Services.AddHostedService<HealthEndpointHostedService>();
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+var multiplexer = ConnectionMultiplexer.Connect(redisConnectionString);
+builder.Services.AddSingleton<IConnectionMultiplexer>(multiplexer);
+
+builder.Services.AddScoped<ITransactionCacheService, RedisTransactionCacheService>();builder.Services.AddHostedService<HealthEndpointHostedService>();
 
 var host = builder.Build();
 

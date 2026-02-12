@@ -104,6 +104,55 @@ public sealed class SupportReadRepository(string connectionString)
 
         return rows.ToList();
     }
+
+    public async Task<(IReadOnlyList<TransactionListRow> Items, int TotalCount)> GetAllTransactionsPaged(
+        int skip,
+        int take,
+        string? sortBy,
+        string sortDirection,
+        CancellationToken ct)
+    {
+        await using var conn = new NpgsqlConnection(connectionString);
+
+        // Determine sort column and direction
+        var sortColumn = sortBy?.ToLower() switch
+        {
+            "amount" => "amount",
+            "status" => "status",
+            "createdat" or "created" => "created_at_utc",
+            _ => "updated_at_utc"
+        };
+
+        var direction = sortDirection?.ToLower() == "asc" ? "ASC" : "DESC";
+
+        // Get total count
+        const string countSql = "SELECT COUNT(*)::int FROM transactions";
+        var totalCount = await conn.ExecuteScalarAsync<int>(
+            new CommandDefinition(countSql, cancellationToken: ct));
+
+        // Get paginated data
+        var dataSql = $"""
+                        SELECT
+                            "Id" as id,
+                            amount,
+                            currency,
+                            merchant_id as merchantId,
+                            status,
+                            risk_score as riskScore,
+                            decision_reason as decisionReason,
+                            created_at_utc as createdAtUtc,
+                            updated_at_utc as updatedAtUtc,
+                            is_deleted as isDeleted
+                        FROM transactions
+                        ORDER BY {sortColumn} {direction}
+                        LIMIT @take OFFSET @skip
+                        """;
+
+        var items = await conn.QueryAsync<TransactionListRow>(
+            new CommandDefinition(dataSql, new { skip, take }, cancellationToken: ct));
+
+        return (items.ToList(), totalCount);
+    }
 }
 
 public sealed record TransactionRow(
@@ -129,3 +178,16 @@ public sealed record TimelineRow(string Event_Type, string? Details_Json, DateTi
 public sealed record IncidentCountsRow(int Total, int Approved, int Rejected, int TimedOut);
 
 public sealed record MerchantTimeoutRow(string MerchantId, int TimedOutCount);
+
+public sealed record TransactionListRow(
+    Guid Id,
+    decimal Amount,
+    string Currency,
+    string MerchantId,
+    int Status,
+    int? RiskScore,
+    string? DecisionReason,
+    DateTime CreatedAtUtc,
+    DateTime UpdatedAtUtc,
+    bool IsDeleted
+);

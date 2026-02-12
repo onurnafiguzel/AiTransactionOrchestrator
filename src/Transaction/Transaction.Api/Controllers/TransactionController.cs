@@ -1,4 +1,5 @@
 using BuildingBlocks.Contracts.Observability;
+using BuildingBlocks.Contracts.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -139,6 +140,58 @@ public sealed class TransactionController(
         // Cache response for 10 minutes
         await cacheService.SetTransactionAsync(id, response, ttlMinutes: 10, cancellationToken);
         logger.LogDebug("Transaction cached | TransactionId={TransactionId}", id);
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Get all transactions with pagination
+    /// </summary>
+    /// <param name="request">Pagination request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Paginated list of transactions</returns>
+    /// <response code="200">Transactions retrieved successfully</response>
+    /// <response code="401">Unauthorized - JWT token required</response>
+    /// <response code="429">Too many requests - rate limit exceeded</response>
+    /// <response code="500">Internal server error</response>
+    [HttpGet]
+    [EnableRateLimiting("transaction-query")]
+    public async Task<ActionResult<PagedResponse<object>>> GetAll(
+        [FromQuery] PagedRequest request,
+        CancellationToken cancellationToken)
+    {
+        var normalized = request.Normalize();
+
+        var (items, totalCount) = await repository.GetAllPagedAsync(
+            normalized.Skip,
+            normalized.PageSize,
+            normalized.SortBy,
+            normalized.SortDirection,
+            cancellationToken);
+
+        var dtos = items.Select(t => new
+        {
+            t.Id,
+            t.Amount,
+            t.Currency,
+            t.MerchantId,
+            t.Status,
+            t.CreatedAtUtc,
+            t.UpdatedAtUtc,
+            t.IsDeleted
+        }).ToList();
+
+        var response = new PagedResponse<object>(
+            dtos,
+            normalized.Page,
+            normalized.PageSize,
+            totalCount);
+
+        logger.LogInformation(
+            "Transactions retrieved | Page={Page} PageSize={PageSize} TotalCount={TotalCount}",
+            normalized.Page,
+            normalized.PageSize,
+            totalCount);
 
         return Ok(response);
     }

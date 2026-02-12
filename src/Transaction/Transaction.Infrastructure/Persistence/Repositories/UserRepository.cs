@@ -34,4 +34,39 @@ internal sealed class UserRepository(TransactionDbContext context) : IUserReposi
     {
         context.Users.Update(user);
     }
+
+    public async Task<(List<User> Items, int TotalCount)> GetAllPagedAsync(
+        int skip,
+        int take,
+        string? sortBy,
+        string sortDirection,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.Users.AsNoTracking();
+
+        // Apply sorting
+        query = sortBy?.ToLower() switch
+        {
+            "email" => sortDirection == "asc"
+                ? query.OrderBy(u => u.Email)
+                : query.OrderByDescending(u => u.Email),
+            "fullname" or "name" => sortDirection == "asc"
+                ? query.OrderBy(u => u.FullName)
+                : query.OrderByDescending(u => u.FullName),
+            "createdat" or "created" => sortDirection == "asc"
+                ? query.OrderBy(u => u.CreatedAtUtc)
+                : query.OrderByDescending(u => u.CreatedAtUtc),
+            _ => sortDirection == "asc"
+                ? query.OrderBy(u => u.UpdatedAtUtc)
+                : query.OrderByDescending(u => u.UpdatedAtUtc)
+        };
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
 }

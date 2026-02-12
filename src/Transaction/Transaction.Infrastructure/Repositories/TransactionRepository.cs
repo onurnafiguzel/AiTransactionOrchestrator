@@ -23,4 +23,39 @@ public sealed class TransactionRepository(TransactionDbContext db) : ITransactio
         db.Transactions.Update(transaction);
         await db.SaveChangesAsync(ct);
     }
+
+    public async Task<(List<Domain.Transactions.Transaction> Items, int TotalCount)> GetAllPagedAsync(
+        int skip,
+        int take,
+        string? sortBy,
+        string sortDirection,
+        CancellationToken ct = default)
+    {
+        var query = db.Transactions.AsNoTracking();
+
+        // Apply sorting
+        query = sortBy?.ToLower() switch
+        {
+            "amount" => sortDirection == "asc"
+                ? query.OrderBy(t => t.Amount)
+                : query.OrderByDescending(t => t.Amount),
+            "status" => sortDirection == "asc"
+                ? query.OrderBy(t => t.Status)
+                : query.OrderByDescending(t => t.Status),
+            "createdat" or "created" => sortDirection == "asc"
+                ? query.OrderBy(t => t.CreatedAtUtc)
+                : query.OrderByDescending(t => t.CreatedAtUtc),
+            _ => sortDirection == "asc"
+                ? query.OrderBy(t => t.UpdatedAtUtc)
+                : query.OrderByDescending(t => t.UpdatedAtUtc)
+        };
+
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(ct);
+
+        return (items, totalCount);
+    }
 }
