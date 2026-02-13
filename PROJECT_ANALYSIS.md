@@ -1146,7 +1146,7 @@ InvalidateTransactionAsync(id)             // ❌ NOT USED
 For questions or issues:
 - Review documentation in `docs/` folder
 - Check existing issues on GitHub
-- Contact: [Your Team Contact]
+- Contact: ongguzel@gmail.com
 
 ---
 
