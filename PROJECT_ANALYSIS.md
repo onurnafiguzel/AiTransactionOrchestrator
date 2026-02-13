@@ -49,7 +49,7 @@
 
 **✅ Tamamlanan (Son 48 saat):**
 - ✅ Cache Invalidation (13 Şubat 2026)
-- ✅ Rate Limiting - User-based (12 Şubat 2026)
+- ✅ Rate Limiting & Request Throttling - 4 strateji (12 Şubat 2026)
 - ✅ Pagination - PagedRequest/Response (12 Şubat 2026)
 
 **Düşük Öncelik (6 adet):**
@@ -183,7 +183,7 @@ Invalidation: ✅ IMPLEMENTED (TransactionApprovedConsumer, TransactionRejectedC
 #### Remaining Features
 
 ❌ **API Versioning** - Breaking change riski  
-❌ **Request Throttling** - Advanced DDoS protection  
+✅ **Request Throttling** - 4 farklı strateji implementasyonu (Fixed Window, Sliding Window, Token Bucket, Concurrency Limiter)  
 
 ---
 
@@ -704,8 +704,8 @@ InvalidateTransactionAsync(id)             // ❌ NOT USED
 
 ### ❌ Missing
 
-- ❌ Rate limiting (API abuse riski)
-- ❌ Request throttling
+- ✅ Rate limiting (User-based + IP-based, 4 strateji)
+- ✅ Request throttling (Token Bucket, Fixed/Sliding Window, Concurrency)
 - ❌ IP whitelisting
 - ❌ API key management (for webhooks)
 - ❌ Encryption at rest
