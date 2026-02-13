@@ -1,103 +1,347 @@
-# 🐳 AI Transaction Orchestrator - Docker Deployment
+# 🐳 Docker Deployment Guide - AI Transaction Orchestrator
 
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com)
 [![Status](https://img.shields.io/badge/Status-Production%20Ready-green.svg)](.)
 
-Tüm servisleri **tek komutla** başlayın - Docker ve docker-compose otomatik olarak:
-- ✅ Veritabanını kurar ve migrasyonları çalıştırır
-- ✅ RabbitMQ message broker'ı başlatır
-- ✅ Elasticsearch ve Kibana'yı kurar
-- ✅ Grafana dashboards'u yapılandırır
-- ✅ Tüm .NET uygulamalarını derleme ve çalıştırır
-- ✅ Health checks ile durumu doğrular
+Start all services with **one command** - Docker automatically:
+- ✅ Creates database and runs migrations
+- ✅ Starts RabbitMQ message broker
+- ✅ Sets up Elasticsearch and Kibana
+- ✅ Builds and runs all .NET applications
+- ✅ Verifies health checks
 
 ---
 
-## 🚀 QuickStart (Önerilen)
+## 📋 Prerequisites
 
-### **Linux/macOS:**
+- **Docker Desktop** (v20.10+)
+- **Docker Compose** (v2.0+)
+- **RAM**: Minimum 8GB (16GB recommended)
+- **Disk**: Minimum 10GB free space
+
+---
+
+## 🚀 Quick Start
+
+### Linux/macOS:
 ```bash
 chmod +x docker-setup.sh && ./docker-setup.sh
 ```
 
-### **Windows (PowerShell):**
+### Windows (PowerShell):
 ```powershell
 .\docker-setup.bat
 ```
 
-### **Makefile ile (tüm OS'ler):**
+### Or use Makefile:
 ```bash
 make setup
 # or
 make dev
 ```
 
----
-
-## ⏱️ Başlangıç Süresi
-- İlk kurulum: **5-10 dakika** (Docker image build)
-- Sonraki başlamalar: **1-2 dakika**
-
----
-
-## 📍 Servis URL'leri
-
-| Servis | URL | Credentials |
-|--------|-----|-------------|
-| **Transaction API** | http://localhost:5000 | - |
-| **Swagger Docs** | http://localhost:5000/swagger | - |
-| **RabbitMQ Admin** | http://localhost:15672 | `admin` / `admin` |
-| **Kibana** | http://localhost:5601 | - |
-| **Grafana** | http://localhost:3000 | `admin` / `admin` |
-| **Prometheus** | http://localhost:9090 | - |
-| **PostgreSQL** | localhost:5432 | ato / ato_pass |
-
----
-
-## 📊 Mimari
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                 Docker Compose Network                  │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
-│  │   Postgres   │  │   RabbitMQ   │  │ Elasticsearch│ │
-│  │   (Port 5432)│  │ (Port 5672)  │  │  (Port 9200) │ │
-│  └──────────────┘  └──────────────┘  └──────────────┘ │
-│         │                  │                 │         │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │                                                  │  │
-│  │  Transaction API (5000) ◄─────── Messages ──────┼──┤
-│  │  Fraud Worker (5010)                            │  │
-│  │  Orchestrator (5020)                            │  │
-│  │  Updater (5030)                                 │  │
-│  │  Support Bot (5040)                             │  │
-│  │                                                  │  │
-│  └──────────────────────────────────────────────────┘  │
-│         │                  │                           │
-│         └────► Kibana ◄────┴────► Prometheus          │
-│                  │                      │              │
-│                  └──────► Grafana ◄─────┘              │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+### Or use Docker Compose directly:
+```bash
+docker-compose up -d
 ```
 
 ---
 
-## 🔧 Yaygın Komutlar
+## ⏱️ Startup Time
+- **First run:** 5-10 minutes (builds Docker images)
+- **Subsequent runs:** 1-2 minutes
+
+---
+
+## 📍 Service URLs
+
+| Service | URL | Credentials | Purpose |
+|---------|-----|-------------|---------|
+| **Transaction API** | http://localhost:5000/swagger | - | Create/query transactions |
+| **Support API** | http://localhost:5040/swagger | - | Support queries |
+| **RabbitMQ Admin** | http://localhost:15672 | admin/admin | Message broker UI |
+| **Kibana** | http://localhost:5601 | - | Log visualization |
+| **PostgreSQL** | localhost:5432 | ato/ato_pass | Database |
+| **Redis** | localhost:6379 | - | Cache |
+| **Elasticsearch** | http://localhost:9200 | - | Log storage |
+
+---
+
+## 📊 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 Docker Compose Network                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │  PostgreSQL  │  │   RabbitMQ   │  │    Redis     │     │
+│  │  (Port 5432) │  │ (Port 5672)  │  │ (Port 6379)  │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+│         │                  │                 │             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │              Application Services                    │  │
+│  │  - Transaction API (5000)                           │  │
+│  │  - Fraud Worker (5010)                              │  │
+│  │  - Orchestrator (5020)                              │  │
+│  │  - Updater (5030)                                   │  │
+│  │  - Support Bot (5040)                               │  │
+│  └──────────────────────────────────────────────────────┘  │
+│         │                  │                               │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │              Observability Stack                     │  │
+│  │  - Elasticsearch (9200)                             │  │
+│  │  - Kibana (5601)                                    │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔧 Common Commands
 
 ```bash
-# Durumu göster
+# Check service status
 docker-compose ps
-make health
 
-# Logs göster
+# View logs
 docker-compose logs -f
 docker-compose logs -f transaction-api
 
-# Veritabanı shell'i
+# Stop all services
+docker-compose stop
+
+# Start all services
+docker-compose start
+
+# Restart specific service
+docker-compose restart transaction-api
+
+# Database shell
 docker-compose exec postgres psql -U ato -d ato_db
+
+# RabbitMQ diagnostics
+docker-compose exec rabbitmq rabbitmq-diagnostics ping
+
+# Redis CLI
+docker-compose exec redis redis-cli
+
+# Clean up (remove containers)
+docker-compose down
+
+# Clean up (remove volumes too - DATA LOSS!)
+docker-compose down -v
+```
+
+---
+
+## 🔍 Health Checks
+
+Check the health of all services:
+
+```bash
+# All containers
+docker-compose ps
+
+# Transaction API
+curl http://localhost:5000/health/ready
+curl http://localhost:5000/health/live
+
+# PostgreSQL
+docker-compose exec postgres pg_isready -U ato
+
+# RabbitMQ
+docker-compose exec rabbitmq rabbitmq-diagnostics status
+
+# Elasticsearch
+curl http://localhost:9200/_cluster/health
+
+# Redis
+docker-compose exec redis redis-cli ping
+```
+
+---
+
+## 📋 Database Migrations
+
+Migrations run automatically on startup. To run manually:
+
+```bash
+# Transaction.Api migrations
+docker-compose exec transaction-api dotnet ef database update
+
+# Check migration status
+docker-compose exec transaction-api dotnet ef migrations list
+```
+
+---
+
+## 🛠️ Troubleshooting
+
+### "Port already in use"
+```bash
+# Find which process is using the port
+lsof -i :5000  # macOS/Linux
+netstat -ano | findstr :5000  # Windows
+
+# Option 1: Stop the process
+# Option 2: Change port in docker-compose.yml
+```
+
+### "Container exits immediately"
+```bash
+# Check logs
+docker-compose logs transaction-api
+
+# Rebuild without cache
+docker-compose build --no-cache
+
+# Remove and recreate
+docker-compose down
+docker-compose up -d
+```
+
+### "Database migration failed"
+```bash
+# Clean volumes and restart
+docker-compose down -v
+docker-compose up -d
+
+# Check PostgreSQL logs
+docker-compose logs postgres
+```
+
+### "RabbitMQ connection refused"
+```bash
+# Check RabbitMQ health
+docker-compose exec rabbitmq rabbitmq-diagnostics status
+
+# Restart RabbitMQ
+docker-compose restart rabbitmq
+
+# Wait for RabbitMQ to be ready (can take 30-60 seconds)
+```
+
+### "Out of memory"
+```bash
+# Increase Docker Desktop memory limit
+# Settings > Resources > Memory > 8GB+
+
+# Or reduce running services
+docker-compose stop kibana elasticsearch
+```
+
+---
+
+## 🧪 Development Workflow
+
+```bash
+# Start infrastructure only
+docker-compose up -d postgres rabbitmq redis elasticsearch kibana
+
+# Run app services locally (for debugging)
+cd src/Transaction/Transaction.Api
+dotnet run
+
+# Or rebuild specific service
+docker-compose build transaction-api
+docker-compose up -d transaction-api
+```
+
+---
+
+## 🧹 Cleanup
+
+```bash
+# Stop all services
+docker-compose stop
+
+# Remove containers
+docker-compose rm -f
+
+# Remove volumes (WARNING: Data loss!)
+docker-compose down -v
+
+# Remove images
+docker-compose down --rmi all
+
+# Full cleanup
+docker system prune -a --volumes
+```
+
+---
+
+## 🔐 Security Considerations
+
+### Production Deployment
+
+**⚠️ Before deploying to production:**
+
+1. **Change default passwords** in docker-compose.yml:
+   - PostgreSQL: `ato_pass`
+   - RabbitMQ: `admin`
+
+2. **Use secrets** instead of environment variables:
+   ```yaml
+   secrets:
+     db_password:
+       file: ./secrets/db_password.txt
+   ```
+
+3. **Enable HTTPS** with reverse proxy (nginx, traefik)
+
+4. **Restrict CORS** in appsettings.json
+
+5. **Use environment-specific configs**:
+   ```bash
+   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+   ```
+
+---
+
+## 📊 Monitoring
+
+View logs in Kibana:
+1. Open http://localhost:5601
+2. Go to **Discover**
+3. Create index pattern: `logstash-*`
+4. Filter by service: `SourceContext:*Transaction.Api*`
+
+---
+
+## 🚀 Performance Tuning
+
+### PostgreSQL
+```yaml
+environment:
+  POSTGRES_INITDB_ARGS: "-c shared_buffers=512MB -c max_connections=200"
+```
+
+### RabbitMQ
+```yaml
+environment:
+  RABBITMQ_VM_MEMORY_HIGH_WATERMARK: 0.7
+```
+
+### Elasticsearch
+```yaml
+environment:
+  ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+```
+
+---
+
+## 📚 Additional Resources
+
+- **[README.md](README.md)** - Quick start guide
+- **[PROJECT_STATUS.md](PROJECT_STATUS.md)** - Current project status
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Architecture diagrams
+- **[AUTHENTICATION_GUIDE.md](AUTHENTICATION_GUIDE.md)** - JWT setup
+
+---
+
+**Last Updated:** February 13, 2026
+
 
 # API shell'i
 docker-compose exec transaction-api bash
