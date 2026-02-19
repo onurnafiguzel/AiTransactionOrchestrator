@@ -1,6 +1,9 @@
 using BuildingBlocks.Observability;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 using StackExchange.Redis;
 using Transaction.Infrastructure;
@@ -15,6 +18,27 @@ builder.Services.AddSerilog((sp, lc) =>
       .ReadFrom.Services(sp)
       .Enrich.FromLogContext()
       .Enrich.With<CorrelationIdEnricher>());
+
+// Add OpenTelemetry instrumentation
+var resourceBuilder = ResourceBuilder.CreateDefault().AddService("Transaction.Updater");
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService("Transaction.Updater"))
+    .WithTracing(tracingBuilder =>
+    {
+        tracingBuilder
+            .SetResourceBuilder(resourceBuilder)
+            .AddHttpClientInstrumentation()
+            .AddSqlClientInstrumentation();
+    })
+    .WithMetrics(metricsBuilder =>
+    {
+        metricsBuilder
+            .SetResourceBuilder(resourceBuilder)
+            .AddHttpClientInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddPrometheusHttpListener(options => options.UriPrefixes = new string[] { $"http://+:5030/" });
+    });
 
 var cs = builder.Configuration.GetConnectionString("TransactionDb")
          ?? "Host=localhost;Port=5432;Database=ato_db;Username=ato;Password=ato_pass";
@@ -55,7 +79,9 @@ var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?
 var multiplexer = ConnectionMultiplexer.Connect(redisConnectionString);
 builder.Services.AddSingleton<IConnectionMultiplexer>(multiplexer);
 
-builder.Services.AddScoped<ITransactionCacheService, RedisTransactionCacheService>();builder.Services.AddHostedService<HealthEndpointHostedService>();
+builder.Services.AddScoped<ITransactionCacheService, RedisTransactionCacheService>();
+// HealthEndpointHostedService temporarily disabled - using PrometheusMetricsHostedService for /metrics
+// builder.Services.AddHostedService<HealthEndpointHostedService>();
 
 var host = builder.Build();
 

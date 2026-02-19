@@ -1,0 +1,138 @@
+groups:
+  - name: aitransaction-alerts
+    interval: 30s
+    rules:
+      # ==================== HTTP ERRORS ====================
+      - alert: HighErrorRate
+        expr: rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "High HTTP error rate detected"
+          description: "{{ $labels.job }} has error rate above 5% (current: {{ $value | humanizePercentage }})"
+
+      - alert: APIHighLatency
+        expr: histogram_quantile(0.95, rate(http_server_request_duration_seconds_bucket[5m])) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High API latency detected"
+          description: "{{ $labels.job }} p95 latency is {{ $value | humanizeDuration }}"
+
+      # ==================== DATABASE ====================
+      - alert: DatabaseConnectionPoolExhausted
+        expr: pg_stat_activity_count > 180
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "PostgreSQL has {{ $value }} active connections (max: 200)"
+
+      # ==================== CACHE ====================
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Redis memory usage: {{ $value | humanizePercentage }}"
+
+      - alert: RedisCacheMissRate
+        expr: rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m])) < 0.7
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis cache hit rate is low"
+          description: "Redis cache hit rate is {{ $value | humanizePercentage }}"
+
+      # ==================== MESSAGE BROKER ====================
+      - alert: RabbitMQQueueDepth
+        expr: rabbitmq_queue_messages > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: messaging
+        annotations:
+          summary: "RabbitMQ queue depth is high"
+          description: "Queue {{ $labels.queue }} has {{ $value }} messages"
+
+      - alert: RabbitMQConnectionLimit
+        expr: rabbitmq_connections / rabbitmq_connections_max > 0.8
+        for: 2m
+        labels:
+          severity: warning
+          component: messaging
+        annotations:
+          summary: "RabbitMQ connection limit approaching"
+          description: "RabbitMQ connections: {{ $value | humanizePercentage }} of max"
+
+      # ==================== WORKER SERVICES ====================
+      - alert: FraudWorkerDown
+        expr: up{job="fraud-worker"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: "Fraud Worker is down"
+          description: "Fraud Worker has been unavailable for more than 1 minute"
+
+      - alert: OrchestratorWorkerDown
+        expr: up{job="transaction-orchestrator"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: "Orchestrator Worker is down"
+          description: "Transaction Orchestrator has been unavailable for more than 1 minute"
+
+      - alert: UpdaterWorkerDown
+        expr: up{job="transaction-updater"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: "Updater Worker is down"
+          description: "Transaction Updater has been unavailable for more than 1 minute"
+
+      # ==================== FRAUD DETECTION ====================
+      - alert: HighFraudDetectionRate
+        expr: rate(fraud_detections_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: fraud
+        annotations:
+          summary: "High fraud detection rate"
+          description: "Fraud detection rate is {{ $value | humanizePercentage }} per second"
+
+      # ==================== GENERAL ERRORS ====================
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been unavailable for more than 1 minute"
+
+      - alert: ExceptionRate
+        expr: rate(exceptions_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High exception rate in {{ $labels.job }}"
+          description: "Exception rate is {{ $value | humanizePercentage }} per second"

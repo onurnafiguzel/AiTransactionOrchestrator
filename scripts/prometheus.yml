@@ -1,0 +1,50 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'aitransaction-monitor'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+rule_files:
+  - '/etc/prometheus/alert-rules.yml'
+
+scrape_configs:
+  # Transaction API Metrics
+  - job_name: 'transaction-api'
+    static_configs:
+      - targets: ['transaction-api:5000']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Fraud Worker Metrics
+  - job_name: 'fraud-worker'
+    static_configs:
+      - targets: ['fraud-worker:5010']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Transaction Orchestrator Metrics
+  - job_name: 'transaction-orchestrator'
+    static_configs:
+      - targets: ['transaction-orchestrator:5020']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Transaction Updater Metrics
+  - job_name: 'transaction-updater'
+    static_configs:
+      - targets: ['transaction-updater:5030']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Support Bot Metrics
+  - job_name: 'support-bot'
+    static_configs:
+      - targets: ['support-bot:5040']
+    metrics_path: '/metrics'
+    scrape_interval: 5s

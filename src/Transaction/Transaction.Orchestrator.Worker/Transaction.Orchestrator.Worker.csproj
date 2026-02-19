@@ -26,6 +26,8 @@
 		<PackageReference Include="AspNetCore.HealthChecks.Redis" />
 		<PackageReference Include="Microsoft.AspNetCore.Diagnostics.HealthChecks" />
 		
+		<PackageReference Include="OpenTelemetry.Exporter.Prometheus.HttpListener" />
+		
 	</ItemGroup>
 
 	<ItemGroup>

@@ -209,6 +209,7 @@ services:
       RabbitMq__Host: rabbitmq
       RabbitMq__Username: admin
       RabbitMq__Password: admin
+      ConnectionStrings__Redis: "redis:6379"
       Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
       Health__Port: "5030"
       Health__RabbitMq: "amqp://admin:admin@rabbitmq:5672"
@@ -259,11 +260,81 @@ services:
       - ato-network
     restart: unless-stopped
 
+  # ==================== METRICS & MONITORING ====================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ato-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./scripts/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./scripts/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - ato_prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ato-network
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: ato-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./scripts/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ato_alertmanager:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ato-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ato-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    ports:
+      - "3000:3000"
+    volumes:
+      - ato_grafana:/var/lib/grafana
+      - ./scripts/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./scripts/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+      - elasticsearch
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ato-network
+    restart: unless-stopped
+
 volumes:
   ato_pgdata:
   ato_rabbitmq:
   ato_esdata:
   ato_redis:
+  ato_prometheus:
+  ato_alertmanager:
+  ato_grafana:
 
 networks:
   ato-network:

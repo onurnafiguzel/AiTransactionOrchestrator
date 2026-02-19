@@ -1,0 +1,75 @@
+{
+  "title": "Fraud Detection Monitoring",
+  "uid": "fraud-detection",
+  "tags": ["aitransaction", "fraud"],
+  "timezone": "browser",
+  "schemaVersion": 16,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "type": "graph",
+      "title": "Fraud Worker - GC Collections",
+      "targets": [
+        {
+          "expr": "rate(process_runtime_dotnet_gc_collections_count_total{job=\"fraud-worker\"}[5m])",
+          "legendFormat": "Gen {{generation}}",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        { "format": "ops", "label": "Collections/sec", "show": true },
+        { "format": "short", "show": false }
+      ]
+    },
+    {
+      "id": 2,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "type": "graph",
+      "title": "Fraud Worker - Memory Usage",
+      "targets": [
+        {
+          "expr": "process_runtime_dotnet_gc_heap_size_bytes{job=\"fraud-worker\"}",
+          "legendFormat": "Heap Size",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        { "format": "bytes", "show": true },
+        { "format": "short", "show": false }
+      ]
+    },
+    {
+      "id": 3,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "type": "graph",
+      "title": "HTTP Client Requests (Outbound)",
+      "targets": [
+        {
+          "expr": "rate(http_client_request_duration_seconds_count{job=\"fraud-worker\"}[5m])",
+          "legendFormat": "{{http_request_method}} {{url_scheme}}://{{server_address}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "type": "graph",
+      "title": "ThreadPool Queue Length",
+      "targets": [
+        {
+          "expr": "process_runtime_dotnet_thread_pool_queue_length{job=\"fraud-worker\"}",
+          "legendFormat": "Queue Length",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        { "format": "short", "label": "Items", "show": true },
+        { "format": "short", "show": false }
+      ]
+    }
+  ]
+}

@@ -25,6 +25,9 @@ builder.Services.AddSerilog((sp, lc) =>
       .Enrich.FromLogContext()
       .Enrich.With<CorrelationIdEnricher>());
 
+// Add OpenTelemetry instrumentation
+builder.AddOpenTelemetryHttp("Transaction.Api");
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -261,5 +264,6 @@ if (app.Environment.IsDevelopment())
 app.MapControllers();
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
+app.MapPrometheusMetrics();
 app.UseHttpsRedirection();
 app.Run();

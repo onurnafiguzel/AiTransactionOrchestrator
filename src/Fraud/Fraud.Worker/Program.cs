@@ -7,6 +7,9 @@ using Fraud.Worker.Policies;
 using Fraud.Worker.Rules;
 using Fraud.Worker.VelocityCheck;
 using MassTransit;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 using StackExchange.Redis;
 
@@ -17,6 +20,27 @@ builder.Services.AddSerilog((sp, lc) =>
       .ReadFrom.Services(sp)
       .Enrich.FromLogContext()
       .Enrich.With<CorrelationIdEnricher>());
+
+// Add OpenTelemetry instrumentation
+var resourceBuilder = ResourceBuilder.CreateDefault().AddService("Fraud.Worker");
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService("Fraud.Worker"))
+    .WithTracing(tracingBuilder =>
+    {
+        tracingBuilder
+            .SetResourceBuilder(resourceBuilder)
+            .AddHttpClientInstrumentation()
+            .AddSqlClientInstrumentation();
+    })
+    .WithMetrics(metricsBuilder =>
+    {
+        metricsBuilder
+            .SetResourceBuilder(resourceBuilder)
+            .AddHttpClientInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddPrometheusHttpListener(options => options.UriPrefixes = new string[] { $"http://+:5010/" });
+    });
 
 // ==================== REDIS CONFIGURATION ====================
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
@@ -130,7 +154,8 @@ builder.Services.AddHealthChecks()
     .AddRedis(redisConnectionString, name: "redis")
     .AddRabbitMQ(rabbitConnectionString: "amqp://admin:admin@localhost:5672", name: "rabbitmq");
 
-builder.Services.AddHostedService<HealthEndpointHostedService>();
+// HealthEndpointHostedService temporarily disabled - using PrometheusMetricsHostedService for /metrics
+// builder.Services.AddHostedService<HealthEndpointHostedService>();
 
 var host = builder.Build();
 host.Run();

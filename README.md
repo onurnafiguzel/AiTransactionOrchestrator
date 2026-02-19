@@ -15,6 +15,7 @@
 - [Quick Start](#-quick-start)
 - [Services](#-services)
 - [API Usage](#-api-usage)
+- [Monitoring](#-monitoring--observability)
 - [Architecture](#-architecture)
 - [Documentation](#-documentation)
 
@@ -55,6 +56,9 @@ docker-compose logs -f
 | **Support API** | http://localhost:5040/swagger | - |
 | **RabbitMQ Admin** | http://localhost:15672 | admin/admin |
 | **Kibana Logs** | http://localhost:5601 | - |
+| **Prometheus** | http://localhost:9090 | - |
+| **Grafana** | http://localhost:3000 | admin/admin |
+| **AlertManager** | http://localhost:9093 | - |
 
 ---
 
@@ -78,6 +82,15 @@ docker-compose logs -f
 | **RabbitMQ** | 5672, 15672 | admin/admin |
 | **Redis** | 6379 | Caching |
 | **Elasticsearch** | 9200 | Logging |
+| **Kibana** | 5601 | Log visualization |
+
+### Monitoring Stack (3)
+
+| Component | Port | Purpose |
+|-----------|------|---------|
+| **Prometheus** | 9090 | Metrics collection |
+| **Grafana** | 3000 | Metrics visualization (admin/admin) |
+| **AlertManager** | 9093 | Alert routing |
 | **Kibana** | 5601 | Log viewer |
 
 ---
@@ -184,7 +197,74 @@ Support Bot (Customer Queries)
 
 ---
 
-## 📚 Documentation
+## � Monitoring & Observability
+
+### Quick Access
+
+| Tool | URL | Credentials | Purpose |
+|------|-----|-------------|---------|
+| **Grafana** | http://localhost:3000 | admin/admin | Metrics dashboards |
+| **Prometheus** | http://localhost:9090 | - | Metrics collection |
+| **AlertManager** | http://localhost:9093 | - | Alert routing |
+| **Kibana** | http://localhost:5601 | - | Log analysis |
+
+### Pre-configured Dashboards
+
+1. **Overview Dashboard** - System health at a glance
+2. **API Performance** - Request latency, throughput, errors
+3. **Fraud Detection** - Detection rates, processing time
+4. **System Resources** - DB, Cache, Message Queue metrics
+
+### Quick Start
+
+```bash
+# Start monitoring stack (included in docker-compose)
+docker-compose up -d
+
+# Access Grafana
+open http://localhost:3000
+
+# View all metrics endpoints
+curl http://localhost:5000/metrics  # Transaction API
+curl http://localhost:5010/metrics  # Fraud Worker
+curl http://localhost:5020/metrics  # Orchestrator
+curl http://localhost:5030/metrics  # Updater
+curl http://localhost:5040/metrics  # Support Bot
+```
+
+### Documentation
+
+- **[METRICS_SETUP.md](METRICS_SETUP.md)** - 5-minute quick setup guide
+- **[MONITORING_QUICKSTART.md](MONITORING_QUICKSTART.md)** - Common tasks reference
+- **[MONITORING.md](MONITORING.md)** - Comprehensive monitoring guide
+- **[DEVOPS_MONITORING.md](DEVOPS_MONITORING.md)** - DevOps/SRE operations guide
+
+### Key Metrics Tracked
+
+- ✅ HTTP request latency (p50, p95, p99)
+- ✅ Error rates by service
+- ✅ Throughput (requests/sec)
+- ✅ Database connection pool usage
+- ✅ Cache hit/miss ratio
+- ✅ Message queue depths
+- ✅ Fraud detection rates
+- ✅ System resource utilization
+
+### Alerting
+
+Pre-configured alerts for:
+- 🔴 Service down
+- 🔴 High error rate (>5%)
+- ⚠️ High latency (p95 >1s)
+- ⚠️ Database connection pool exhaustion
+- ⚠️ Low cache hit rate (<70%)
+- ⚠️ High message queue depth (>1000)
+
+Configure Slack/Email notifications in `scripts/alertmanager.yml`
+
+---
+
+## �📚 Documentation
 
 - **[PROJECT_STATUS.md](PROJECT_STATUS.md)** - Current status, roadmap, missing features
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Detailed architecture diagrams
@@ -236,6 +316,7 @@ See **[PROJECT_STATUS.md](PROJECT_STATUS.md)** for detailed status.
 ### Implemented ✅
 - ✅ 5 Microservices (API, Orchestrator, Updater, Fraud, Support)
 - ✅ 5 Infrastructure services (PostgreSQL, RabbitMQ, Redis, Elasticsearch, Kibana)
+- ✅ 3 Monitoring services (Prometheus, Grafana, AlertManager)
 - ✅ JWT Authentication & Role-based Authorization
 - ✅ AI-Powered Fraud Detection (4 rules)
 - ✅ Rate Limiting (4 strategies)
@@ -245,13 +326,14 @@ See **[PROJECT_STATUS.md](PROJECT_STATUS.md)** for detailed status.
 - ✅ Request/Response Logging
 - ✅ Correlation ID Tracking
 - ✅ Health Checks
+- ✅ Metrics & Monitoring (OpenTelemetry + Prometheus)
+- ✅ Alerting System (AlertManager)
 - ✅ Docker Deployment
 
 ### Missing ❌
 - ❌ Unit Tests (Critical)
 - ❌ Integration Tests (Critical)
 - ❌ Distributed Tracing
-- ❌ Metrics & Monitoring
 
 ---
 
