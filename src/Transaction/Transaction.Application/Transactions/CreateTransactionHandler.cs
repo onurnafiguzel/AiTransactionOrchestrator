@@ -19,6 +19,12 @@ public sealed class CreateTransactionHandler(
 {
     public async Task<Guid> Handle(CreateTransactionCommand request, CancellationToken ct)
     {
+        var existingTransactionId = await outbox.TryGetExistingTransactionId(request.IdempotencyKey, ct);
+        if (existingTransactionId.HasValue)
+        {
+            return existingTransactionId.Value;
+        }
+
         var customerIp = ipContext.ClientIpAddress;
 
         var tx = Transaction.Domain.Transactions.Transaction.Create(
@@ -40,6 +46,7 @@ public sealed class CreateTransactionHandler(
                 request.CorrelationId,
                 customerIp),
             request.CorrelationId,
+            request.IdempotencyKey,
             ct);
 
         await uow.SaveChangesAsync(ct);

@@ -134,6 +134,7 @@ curl -X POST http://localhost:5000/api/auth/login \
 ```bash
 curl -X POST http://localhost:5000/api/transaction \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "X-Idempotency-Key: 2f4b3e6c8d1a4c2b9f0e3d7a1b2c3d4e" \
   -H "Content-Type: application/json" \
   -d '{
     "amount": 5000,

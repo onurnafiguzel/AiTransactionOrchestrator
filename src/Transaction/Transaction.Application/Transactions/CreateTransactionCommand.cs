@@ -7,5 +7,6 @@ public sealed record CreateTransactionCommand(
     decimal Amount,
     string Currency,
     string MerchantId,
-    string CorrelationId
+    string CorrelationId,
+    string IdempotencyKey
 ) : IRequest<Guid>;

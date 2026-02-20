@@ -6,6 +6,7 @@ public sealed class OutboxMessage
     public string Type { get; private set; } = default!;
     public string Payload { get; private set; } = default!;
     public string CorrelationId { get; private set; } = default!;
+    public string? IdempotencyKey { get; private set; }
 
     public DateTime OccurredAtUtc { get; private set; }
     public DateTime? PublishedAtUtc { get; private set; }
@@ -24,12 +25,13 @@ public sealed class OutboxMessage
 
     private OutboxMessage() { }
 
-    public OutboxMessage(Guid id, string type, string payload, string correlationId)
+    public OutboxMessage(Guid id, string type, string payload, string correlationId, string? idempotencyKey = null)
     {
         Id = id;
         Type = type;
         Payload = payload;
         CorrelationId = correlationId;
+        IdempotencyKey = idempotencyKey;
 
         OccurredAtUtc = DateTime.UtcNow;
         NextAttemptAtUtc = OccurredAtUtc;

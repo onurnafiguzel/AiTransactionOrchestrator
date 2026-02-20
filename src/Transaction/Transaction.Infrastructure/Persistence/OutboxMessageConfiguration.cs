@@ -14,6 +14,7 @@ internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outb
         b.Property(x => x.Type).IsRequired().HasMaxLength(512);
         b.Property(x => x.Payload).IsRequired();
         b.Property(x => x.CorrelationId).IsRequired().HasMaxLength(128);
+        b.Property(x => x.IdempotencyKey).HasMaxLength(128);
 
         b.Property(x => x.OccurredAtUtc).IsRequired();
         b.Property(x => x.PublishedAtUtc);
@@ -32,5 +33,8 @@ internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outb
 
         // Lock cleanup
         b.HasIndex(x => x.LockedUntilUtc);
+
+        // Idempotency lookup
+        b.HasIndex(x => new { x.IdempotencyKey, x.Type });
     }
 }

@@ -68,6 +68,7 @@ TOKEN="<your-jwt-token>"
 # Create transaction
 curl -X POST http://localhost:5000/api/transactions \
   -H "Authorization: Bearer $TOKEN" \
+   -H "X-Idempotency-Key: 8f1c2d3e4b5a6978c9d0e1f2a3b4c5d6" \
   -H "Content-Type: application/json" \
   -d '{
     "amount": 100.00,
@@ -129,6 +130,7 @@ curl -X POST http://localhost:5000/api/transactions \
 for i in {1..100}; do
   curl -X POST http://localhost:5000/api/transactions \
     -H "Authorization: Bearer INVALID_TOKEN" \
+      -H "X-Idempotency-Key: 9c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f" \
     -H "Content-Type: application/json" \
     -d '{"amount": 100}' &
 done

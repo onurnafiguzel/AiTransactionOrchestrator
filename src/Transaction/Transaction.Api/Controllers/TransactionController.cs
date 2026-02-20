@@ -25,6 +25,8 @@ public sealed class TransactionController(
     ILogger<TransactionController> logger)
     : ControllerBase
 {
+    private const string IdempotencyHeaderName = "X-Idempotency-Key";
+
     /// <summary>
     /// Create a new transaction
     /// </summary>
@@ -56,6 +58,14 @@ public sealed class TransactionController(
             return Unauthorized(new { error = "UserId not found in token" });
         }
 
+        if (!HttpContext.Request.Headers.TryGetValue(IdempotencyHeaderName, out var idempotencyValues)
+            || string.IsNullOrWhiteSpace(idempotencyValues.ToString()))
+        {
+            return BadRequest(new { error = $"{IdempotencyHeaderName} header is required" });
+        }
+
+        var idempotencyKey = idempotencyValues.ToString();
+
         // Get or create correlation ID
         var correlationId = CorrelationContext.CorrelationId
             ?? (HttpContext.Request.Headers.TryGetValue(Correlation.HeaderName, out var values)
@@ -68,7 +78,8 @@ public sealed class TransactionController(
             request.Amount,
             request.Currency,
             request.MerchantId,
-            correlationId);
+            correlationId,
+            idempotencyKey);
 
         var transactionId = await mediator.Send(command, cancellationToken);
 
