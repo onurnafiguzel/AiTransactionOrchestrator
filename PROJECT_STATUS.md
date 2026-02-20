@@ -152,16 +152,6 @@
 
 ---
 
-#### Request Idempotency (API Level)
-**Öncelik:** P2  
-**Süre:** 6-8 saat  
-
-**Problem:**
-- Client retry can create duplicates
-- No idempotency key support
-
----
-
 #### Service Mesh / Sidecar Pattern
 **Öncelik:** P3  
 **Süre:** 20-30 saat  
