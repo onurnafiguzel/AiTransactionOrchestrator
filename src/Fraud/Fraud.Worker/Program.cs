@@ -1,4 +1,5 @@
 using BuildingBlocks.Observability;
+using BuildingBlocks.Contracts.Resiliency;
 using Fraud.Worker.AI;
 using Fraud.Worker.Caching;
 using Fraud.Worker.Consumers;
@@ -22,6 +23,9 @@ builder.Services.AddSerilog((sp, lc) =>
 // Add OpenTelemetry instrumentation with distributed tracing
 builder.AddOpenTelemetryWorker("Fraud.Worker");
 builder.Services.AddMassTransitInstrumentation();
+
+// ==================== RESILIENCE PIPELINES ====================
+builder.Services.AddResiliencePipelines();
 
 // ==================== REDIS CONFIGURATION ====================
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 

@@ -61,7 +61,8 @@
 		<!-- Resilience Patterns -->
 		<PackageVersion Include="Polly" Version="8.4.1" />
 		<PackageVersion Include="Polly.CircuitBreaker" Version="8.4.1" />
-
+		<PackageVersion Include="Polly.Extensions.Http" Version="3.0.0" />
+		<PackageVersion Include="Polly.Contrib.WaitAndRetry" Version="1.1.1" />
 		<PackageVersion Include="Swashbuckle.AspNetCore.Filters" Version="8.0.2" />
 		<PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
 

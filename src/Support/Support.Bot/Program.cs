@@ -1,4 +1,5 @@
 using BuildingBlocks.Observability;
+using BuildingBlocks.Contracts.Resiliency;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -20,6 +21,9 @@ builder.Services.AddSerilog((sp, lc) =>
 
 // Add OpenTelemetry instrumentation
 builder.AddOpenTelemetryHttp("Support.Bot");
+
+// Add Resilience Pipelines
+builder.Services.AddResiliencePipelines();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>

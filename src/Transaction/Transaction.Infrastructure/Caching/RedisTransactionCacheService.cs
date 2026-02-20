@@ -1,6 +1,8 @@
 using StackExchange.Redis;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using BuildingBlocks.Contracts.Resiliency;
+using Polly;
 
 namespace Transaction.Infrastructure.Caching;
 
@@ -18,15 +20,18 @@ public sealed class RedisTransactionCacheService : ITransactionCacheService
 {
     private readonly IDatabase _db;
     private readonly ILogger<RedisTransactionCacheService> _logger;
+    private readonly ResiliencePipeline _resiliencePipeline;
     
     private const string KeyPrefix = "transaction:";
 
     public RedisTransactionCacheService(
         IConnectionMultiplexer redis,
-        ILogger<RedisTransactionCacheService> logger)
+        ILogger<RedisTransactionCacheService> logger,
+        ResiliencePipelineFactory pipelineFactory)
     {
         _db = redis.GetDatabase();
         _logger = logger;
+        _resiliencePipeline = pipelineFactory.GetRedisPipeline();
     }
 
     public async Task SetTransactionAsync<T>(
@@ -37,11 +42,14 @@ public sealed class RedisTransactionCacheService : ITransactionCacheService
     {
         try
         {
-            var key = $"{KeyPrefix}{transactionId}";
-            var json = JsonSerializer.Serialize(data);
-            
-            await _db.StringSetAsync(key, json, TimeSpan.FromMinutes(ttlMinutes));
-            _logger.LogDebug("Transaction {TransactionId} cached for {TtlMinutes} minutes", transactionId, ttlMinutes);
+            await _resiliencePipeline.ExecuteAsync(async token =>
+            {
+                var key = $"{KeyPrefix}{transactionId}";
+                var json = JsonSerializer.Serialize(data);
+                
+                await _db.StringSetAsync(key, json, TimeSpan.FromMinutes(ttlMinutes));
+                _logger.LogDebug("Transaction {TransactionId} cached for {TtlMinutes} minutes", transactionId, ttlMinutes);
+            }, ct);
         }
         catch (Exception ex)
         {
@@ -53,18 +61,21 @@ public sealed class RedisTransactionCacheService : ITransactionCacheService
     {
         try
         {
-            var key = $"{KeyPrefix}{transactionId}";
-            var value = await _db.StringGetAsync(key);
-
-            if (value.HasValue)
+            return await _resiliencePipeline.ExecuteAsync(async token =>
             {
-                var data = JsonSerializer.Deserialize<T>(value.ToString());
-                _logger.LogDebug("Transaction {TransactionId} found in cache", transactionId);
-                return data;
-            }
+                var key = $"{KeyPrefix}{transactionId}";
+                var value = await _db.StringGetAsync(key);
 
-            _logger.LogDebug("Transaction {TransactionId} cache miss", transactionId);
-            return default;
+                if (value.HasValue)
+                {
+                    var data = JsonSerializer.Deserialize<T>(value.ToString());
+                    _logger.LogDebug("Transaction {TransactionId} found in cache", transactionId);
+                    return data;
+                }
+
+                _logger.LogDebug("Transaction {TransactionId} cache miss", transactionId);
+                return default;
+            }, ct);
         }
         catch (Exception ex)
         {
@@ -77,9 +88,12 @@ public sealed class RedisTransactionCacheService : ITransactionCacheService
     {
         try
         {
-            var key = $"{KeyPrefix}{transactionId}";
-            await _db.KeyDeleteAsync(key);
-            _logger.LogInformation("Transaction {TransactionId} cache invalidated", transactionId);
+            await _resiliencePipeline.ExecuteAsync(async token =>
+            {
+                var key = $"{KeyPrefix}{transactionId}";
+                await _db.KeyDeleteAsync(key);
+                _logger.LogInformation("Transaction {TransactionId} cache invalidated", transactionId);
+            }, ct);
         }
         catch (Exception ex)
         {

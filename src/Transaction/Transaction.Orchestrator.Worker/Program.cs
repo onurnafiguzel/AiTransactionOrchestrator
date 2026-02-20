@@ -1,4 +1,5 @@
 ﻿using BuildingBlocks.Observability;
+using BuildingBlocks.Contracts.Resiliency;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
@@ -19,6 +20,9 @@ builder.Services.AddSerilog((sp, lc) =>
 builder.AddOpenTelemetryWorker("Transaction.Orchestrator");
 builder.Services.AddMassTransitInstrumentation();
 
+// Add Resilience Pipelines
+builder.Services.AddResiliencePipelines();
+
 var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
 var rabbitUser = builder.Configuration["RabbitMq:Username"] ?? "admin";
 var rabbitPass = builder.Configuration["RabbitMq:Password"] ?? "admin";
@@ -30,7 +34,17 @@ builder.Services.AddSingleton(new Transaction.Orchestrator.Worker.Timeline.Timel
 
 builder.Services.AddDbContext<OrchestratorSagaDbContext>(opt =>
 {
-    opt.UseNpgsql(sagaCs);
+    opt.UseNpgsql(sagaCs, npgsqlOptions =>
+    {
+        // Enable automatic retry on transient failures
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorCodesToAdd: null);
+        
+        // Command timeout
+        npgsqlOptions.CommandTimeout(30);
+    });
 });
 
 builder.Services.AddMassTransit(x =>

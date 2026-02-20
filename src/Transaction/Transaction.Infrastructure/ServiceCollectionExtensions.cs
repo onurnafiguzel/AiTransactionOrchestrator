@@ -9,6 +9,7 @@ using Transaction.Infrastructure.Inbox;
 using Transaction.Infrastructure.Outbox;
 using Transaction.Infrastructure.Persistence;
 using Transaction.Infrastructure.Repositories;
+using BuildingBlocks.Contracts.Resiliency;
 
 namespace Transaction.Infrastructure;
 
@@ -18,11 +19,21 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         string connectionString)
     {
-        // Register DbContext with IMediator via factory
+        // Register DbContext with IMediator via factory and retry policy
         services.AddScoped(sp =>
         {
             var options = new DbContextOptionsBuilder<TransactionDbContext>()
-                .UseNpgsql(connectionString)
+                .UseNpgsql(connectionString, npgsqlOptions =>
+                {
+                    // Enable automatic retry on transient failures
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 3,
+                        maxRetryDelay: TimeSpan.FromSeconds(10),
+                        errorCodesToAdd: null);
+                    
+                    // Command timeout
+                    npgsqlOptions.CommandTimeout(30);
+                })
                 .Options;
             
             var mediator = sp.GetService<IMediator>();
@@ -38,6 +49,9 @@ public static class ServiceCollectionExtensions
         // Authentication services
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
+
+        // Resilience pipelines for retry policies
+        services.AddResiliencePipelines();
 
         return services;
     }

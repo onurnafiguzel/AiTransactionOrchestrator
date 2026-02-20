@@ -9,6 +9,11 @@
 
 		<PackageReference Include="MassTransit" />
 
+		<!-- Resilience Patterns -->
+		<PackageReference Include="Polly" />
+		<PackageReference Include="Polly.Extensions.Http" />
+		<PackageReference Include="Polly.Contrib.WaitAndRetry" />
+
 		<!-- OpenTelemetry Core -->
 		<PackageReference Include="OpenTelemetry.Api" />
 		<PackageReference Include="OpenTelemetry.Extensions.Hosting" />
