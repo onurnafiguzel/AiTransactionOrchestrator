@@ -1,6 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+﻿using BuildingBlocks.Contracts.Resiliency;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Transaction.Application.Abstractions;
 using Transaction.Application.Outbox;
 using Transaction.Application.Users;
@@ -9,7 +10,6 @@ using Transaction.Infrastructure.Inbox;
 using Transaction.Infrastructure.Outbox;
 using Transaction.Infrastructure.Persistence;
 using Transaction.Infrastructure.Repositories;
-using BuildingBlocks.Contracts.Resiliency;
 
 namespace Transaction.Infrastructure;
 
@@ -30,12 +30,12 @@ public static class ServiceCollectionExtensions
                         maxRetryCount: 3,
                         maxRetryDelay: TimeSpan.FromSeconds(10),
                         errorCodesToAdd: null);
-                    
+
                     // Command timeout
                     npgsqlOptions.CommandTimeout(30);
                 })
                 .Options;
-            
+
             var mediator = sp.GetService<IMediator>();
             return new TransactionDbContext(options, mediator);
         });

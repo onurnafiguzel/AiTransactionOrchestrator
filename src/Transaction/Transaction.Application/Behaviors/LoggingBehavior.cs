@@ -1,9 +1,9 @@
+using MediatR;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace Transaction.Application.Behaviors;
 

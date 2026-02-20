@@ -10,7 +10,7 @@ namespace Transaction.Orchestrator.Worker.Saga;
 internal sealed class NullDisposable : IDisposable
 {
     public static readonly NullDisposable Instance = new();
-    
+
     public void Dispose()
     {
         // No-op disposable
@@ -21,7 +21,7 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
 {
     private readonly ILogger<TransactionOrchestrationStateMachine> logger;
     private readonly TimelineWriter timeline;
-    private const int MaxRetry = 3;   
+    private const int MaxRetry = 3;
 
     public State Submitted { get; private set; } = default!;
     public State FraudRequested { get; private set; } = default!;
@@ -121,7 +121,7 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                     using (BeginSagaScope(ctx))
                     {
                         logger.LogInformation(
-                            "Published FraudCheckRequested | Retry={Retry}",                            
+                            "Published FraudCheckRequested | Retry={Retry}",
                             ctx.Saga.RetryCount);
 
                         LogTransition(nameof(Submitted), nameof(FraudRequested));
@@ -507,7 +507,7 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
             ["transaction_id"] = ctx.Saga.TransactionId,
             ["state"] = ctx.Saga.CurrentState
         });
-        
+
         return scope ?? NullDisposable.Instance;
     }
 

@@ -1,6 +1,6 @@
-﻿using System.Text.Json;
-using BuildingBlocks.Contracts.Transactions;
+﻿using BuildingBlocks.Contracts.Transactions;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using Transaction.Application.Outbox;
 using Transaction.Infrastructure.Persistence;
 

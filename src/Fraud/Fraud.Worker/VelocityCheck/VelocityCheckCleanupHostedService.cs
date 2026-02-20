@@ -1,6 +1,3 @@
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-
 namespace Fraud.Worker.VelocityCheck;
 
 /// <summary>
@@ -27,9 +24,9 @@ public class VelocityCheckCleanupHostedService(
             try
             {
                 logger.LogDebug("Starting velocity check cleanup...");
-                
+
                 await velocityCheckService.CleanupOldRecordsAsync(_ageInMinutes);
-                
+
                 logger.LogInformation("Velocity check cleanup completed successfully");
             }
             catch (Exception ex)

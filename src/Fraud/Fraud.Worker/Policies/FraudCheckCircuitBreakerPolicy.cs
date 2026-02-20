@@ -1,7 +1,6 @@
-using Microsoft.Extensions.Logging;
+using Fraud.Worker.Rules;
 using Polly;
 using Polly.CircuitBreaker;
-using Fraud.Worker.Rules;
 
 namespace Fraud.Worker.Policies;
 

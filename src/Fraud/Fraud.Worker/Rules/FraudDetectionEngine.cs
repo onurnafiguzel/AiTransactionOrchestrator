@@ -1,5 +1,4 @@
 using Fraud.Worker.Policies;
-using Microsoft.Extensions.Logging;
 
 namespace Fraud.Worker.Rules;
 

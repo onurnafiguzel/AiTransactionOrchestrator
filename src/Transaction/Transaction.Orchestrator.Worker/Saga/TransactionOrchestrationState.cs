@@ -7,7 +7,7 @@ public sealed class TransactionOrchestrationState : SagaStateMachineInstance
 
     public Guid TransactionId { get; set; }
     public Guid UserId { get; set; }
-    public string CorrelationKey { get; set; } = default!; 
+    public string CorrelationKey { get; set; } = default!;
 
     public decimal Amount { get; set; }
     public string Currency { get; set; } = default!;

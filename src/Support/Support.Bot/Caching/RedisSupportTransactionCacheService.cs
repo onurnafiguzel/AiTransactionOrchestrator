@@ -1,8 +1,7 @@
-using StackExchange.Redis;
-using System.Text.Json;
-using Microsoft.Extensions.Logging;
 using BuildingBlocks.Contracts.Resiliency;
 using Polly;
+using StackExchange.Redis;
+using System.Text.Json;
 
 namespace Support.Bot.Caching;
 
@@ -14,7 +13,7 @@ public interface ISupportTransactionCacheService
     Task SetSupportTransactionAsync<T>(Guid transactionId, T data, int ttlMinutes = 10, CancellationToken ct = default);
     Task<T?> GetSupportTransactionAsync<T>(Guid transactionId, CancellationToken ct = default);
     Task InvalidateSupportTransactionAsync(Guid transactionId, CancellationToken ct = default);
-    
+
     Task SetIncidentSummaryAsync<T>(string cacheKey, T data, int ttlMinutes = 30, CancellationToken ct = default);
     Task<T?> GetIncidentSummaryAsync<T>(string cacheKey, CancellationToken ct = default);
     Task InvalidateIncidentSummaryAsync(string cacheKey, CancellationToken ct = default);
@@ -25,7 +24,7 @@ public sealed class RedisSupportTransactionCacheService : ISupportTransactionCac
     private readonly IDatabase _db;
     private readonly ILogger<RedisSupportTransactionCacheService> _logger;
     private readonly ResiliencePipeline _resiliencePipeline;
-    
+
     private const string TransactionKeyPrefix = "support:transaction:";
     private const string IncidentSummaryKey = "support:incident:summary";
 
@@ -51,7 +50,7 @@ public sealed class RedisSupportTransactionCacheService : ISupportTransactionCac
             {
                 var key = $"{TransactionKeyPrefix}{transactionId}";
                 var json = JsonSerializer.Serialize(data);
-                
+
                 await _db.StringSetAsync(key, json, TimeSpan.FromMinutes(ttlMinutes));
                 _logger.LogDebug("Support transaction {TransactionId} cached for {TtlMinutes} minutes", transactionId, ttlMinutes);
             }, ct);

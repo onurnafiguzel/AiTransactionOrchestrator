@@ -1,5 +1,4 @@
 using StackExchange.Redis;
-using Microsoft.Extensions.Logging;
 
 namespace Fraud.Worker.Caching;
 

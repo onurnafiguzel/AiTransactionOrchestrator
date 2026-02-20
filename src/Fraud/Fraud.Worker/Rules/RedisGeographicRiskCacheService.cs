@@ -1,5 +1,4 @@
 using StackExchange.Redis;
-using Microsoft.Extensions.Logging;
 
 namespace Fraud.Worker.Rules;
 
@@ -19,7 +18,7 @@ public sealed class RedisGeographicRiskCacheService : IGeographicRiskCacheServic
 {
     private readonly IDatabase _db;
     private readonly ILogger<RedisGeographicRiskCacheService> _logger;
-    
+
     private const string RiskScoresKey = "geo:risk:scores";
 
     public RedisGeographicRiskCacheService(
@@ -35,7 +34,7 @@ public sealed class RedisGeographicRiskCacheService : IGeographicRiskCacheServic
         try
         {
             var value = await _db.HashGetAsync(RiskScoresKey, countryCode.ToUpperInvariant());
-            
+
             if (value.HasValue && int.TryParse(value.ToString(), out var score))
             {
                 _logger.LogDebug("Geographic risk score for {Country}: {Score}", countryCode, score);

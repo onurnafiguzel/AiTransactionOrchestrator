@@ -1,7 +1,7 @@
+using BuildingBlocks.Contracts.Observability;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
-using BuildingBlocks.Contracts.Observability;
 
 namespace Transaction.Api.Middleware;
 

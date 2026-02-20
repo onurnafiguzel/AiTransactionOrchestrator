@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Transaction.Domain.Transactions;
 
 namespace Transaction.Infrastructure.Persistence;
 
@@ -65,8 +64,8 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
 
         b.Property(x => x.LastDecidedAtUtc)
             .HasColumnName("last_decided_at_utc");
-       
-       // Index for fraud detection queries
+
+        // Index for fraud detection queries
         b.HasIndex(x => x.CustomerIp)
             .HasDatabaseName("idx_transactions_customer_ip");
 
@@ -81,7 +80,7 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
         // Index for user velocity checks
         b.HasIndex(x => new { x.UserId, x.CreatedAtUtc })
             .HasDatabaseName("idx_transactions_user_id_created_at");
-            
+
         // DomainEvents EF tarafından persist edilmesin
         b.Ignore(x => x.DomainEvents);
     }

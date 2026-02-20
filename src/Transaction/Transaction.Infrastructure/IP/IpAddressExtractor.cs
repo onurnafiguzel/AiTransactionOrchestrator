@@ -24,7 +24,7 @@ public static class IpAddressExtractor
             {
                 var ips = forwardedFor.ToString().Split(',');
                 var ip = ips[0].Trim();
-                
+
                 if (!string.IsNullOrWhiteSpace(ip) && IsValidIpAddress(ip))
                     return ip;
             }

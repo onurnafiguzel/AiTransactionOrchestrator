@@ -1,8 +1,8 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
 using Transaction.Application.Users;
 
 namespace Transaction.Infrastructure.Authentication;
@@ -11,7 +11,7 @@ public sealed class JwtTokenGenerator(IConfiguration configuration) : IJwtTokenG
 {
     public string GenerateToken(Guid userId, string email, string role)
     {
-        var secretKey = configuration["Jwt:SecretKey"] 
+        var secretKey = configuration["Jwt:SecretKey"]
             ?? throw new InvalidOperationException("JWT SecretKey is not configured");
         var issuer = configuration["Jwt:Issuer"] ?? "AiTransactionOrchestrator";
         var audience = configuration["Jwt:Audience"] ?? "AiTransactionOrchestrator";

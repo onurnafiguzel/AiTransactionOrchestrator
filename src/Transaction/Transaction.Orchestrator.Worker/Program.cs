@@ -1,10 +1,9 @@
-﻿using BuildingBlocks.Observability;
-using BuildingBlocks.Contracts.Resiliency;
+﻿using BuildingBlocks.Contracts.Resiliency;
+using BuildingBlocks.Observability;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 using Serilog;
-using Transaction.Orchestrator.Worker.Health;
 using Transaction.Orchestrator.Worker.Persistence;
 using Transaction.Orchestrator.Worker.Saga;
 
@@ -41,7 +40,7 @@ builder.Services.AddDbContext<OrchestratorSagaDbContext>(opt =>
             maxRetryCount: 3,
             maxRetryDelay: TimeSpan.FromSeconds(10),
             errorCodesToAdd: null);
-        
+
         // Command timeout
         npgsqlOptions.CommandTimeout(30);
     });
@@ -53,7 +52,7 @@ builder.Services.AddMassTransit(x =>
     x.AddQuartzConsumers();
 
     x.AddSagaStateMachine<TransactionOrchestrationStateMachine, TransactionOrchestrationState>()
-        .Endpoint(e=>e.Name = "transaction-orchestrator")
+        .Endpoint(e => e.Name = "transaction-orchestrator")
         .EntityFrameworkRepository(r =>
         {
             r.ConcurrencyMode = ConcurrencyMode.Optimistic;

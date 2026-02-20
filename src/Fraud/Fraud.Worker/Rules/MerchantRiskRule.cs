@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Fraud.Worker.Caching;
 
 namespace Fraud.Worker.Rules;

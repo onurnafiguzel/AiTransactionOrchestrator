@@ -16,7 +16,7 @@ public sealed class TransactionRepository(TransactionDbContext db) : ITransactio
         return db.Transactions
             .AsTracking()
             .FirstOrDefaultAsync(x => x.Id == id, ct);
-    }    
+    }
 
     public async Task Save(Transaction.Domain.Transactions.Transaction transaction, CancellationToken ct = default)
     {

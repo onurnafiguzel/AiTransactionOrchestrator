@@ -1,5 +1,4 @@
 using StackExchange.Redis;
-using Microsoft.Extensions.Logging;
 
 namespace Fraud.Worker.VelocityCheck;
 
@@ -11,7 +10,7 @@ public sealed class RedisVelocityCheckService : IVelocityCheckService
 {
     private readonly IDatabase _db;
     private readonly ILogger<RedisVelocityCheckService> _logger;
-    
+
     private const string KeyPrefix = "velocity:rejected:";
     private const int CacheTtlMinutes = 10; // 10 dakikalık time window
 
@@ -69,7 +68,7 @@ public sealed class RedisVelocityCheckService : IVelocityCheckService
             // Store transaction details
             var details = $"{DateTime.UtcNow:O}|{amount}|{merchant}|{country}";
             await _db.ListRightPushAsync(detailsKey, details);
-            
+
             // Details list'inin TTL'ini de her zaman set et
             await _db.KeyExpireAsync(detailsKey, ttl);
 
@@ -121,11 +120,11 @@ public sealed class RedisVelocityCheckService : IVelocityCheckService
                     if (timestamp < cutoffTime)
                     {
                         await _db.KeyDeleteAsync(key);
-                        
+
                         // Karşılık gelen count key'ini de sil
                         var countKey = key.ToString().Replace(":details", ":count");
                         await _db.KeyDeleteAsync(countKey);
-                        
+
                         deletedCount++;
                         _logger.LogInformation(
                             "Cleaned up old velocity records. Key: {Key}, OldestRecord: {Timestamp}",

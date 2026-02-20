@@ -1,7 +1,6 @@
 ﻿using MediatR;
 using Transaction.Application.Abstractions;
 using Transaction.Application.IP;
-using Transaction.Application.Transactions;
 
 namespace Transaction.Application.Transactions;
 

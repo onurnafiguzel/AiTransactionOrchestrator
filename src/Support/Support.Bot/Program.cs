@@ -1,7 +1,6 @@
-using BuildingBlocks.Observability;
 using BuildingBlocks.Contracts.Resiliency;
+using BuildingBlocks.Observability;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;

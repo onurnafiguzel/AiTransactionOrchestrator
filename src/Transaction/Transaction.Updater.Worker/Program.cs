@@ -6,7 +6,6 @@ using StackExchange.Redis;
 using Transaction.Infrastructure;
 using Transaction.Infrastructure.Caching;
 using Transaction.Updater.Worker.Consumers;
-using Transaction.Updater.Worker.Health;
 
 var builder = Host.CreateApplicationBuilder(args);
 

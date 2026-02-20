@@ -1,14 +1,12 @@
-using BuildingBlocks.Observability;
 using BuildingBlocks.Contracts.Resiliency;
+using BuildingBlocks.Observability;
 using Fraud.Worker.AI;
 using Fraud.Worker.Caching;
 using Fraud.Worker.Consumers;
-using Fraud.Worker.Health;
 using Fraud.Worker.Policies;
 using Fraud.Worker.Rules;
 using Fraud.Worker.VelocityCheck;
 using MassTransit;
-using OpenTelemetry.Metrics;
 using Serilog;
 using StackExchange.Redis;
 
@@ -28,7 +26,7 @@ builder.Services.AddMassTransitInstrumentation();
 builder.Services.AddResiliencePipelines();
 
 // ==================== REDIS CONFIGURATION ====================
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
     ?? "localhost:6379";
 var multiplexer = ConnectionMultiplexer.Connect(redisConnectionString);
 builder.Services.AddSingleton<IConnectionMultiplexer>(multiplexer);
@@ -51,37 +49,37 @@ builder.Services.AddHostedService<VelocityCheckCleanupHostedService>();
 
 // Fraud Detection Rules
 // Amount-based rules
-builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+builder.Services.AddScoped<IFraudDetectionRule>(sp =>
     new HighAmountRule(sp.GetRequiredService<IUserThresholdCacheService>()));
-builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+builder.Services.AddScoped<IFraudDetectionRule>(sp =>
     new UserDailyLimitRule(
         sp.GetRequiredService<IUserDailySpendingCacheService>(),
         sp.GetRequiredService<ILogger<UserDailyLimitRule>>()));
 
 // Merchant-based rules
-builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+builder.Services.AddScoped<IFraudDetectionRule>(sp =>
     new MerchantRiskRule(
         sp.GetRequiredService<IMerchantRiskCacheService>(),
         sp.GetRequiredService<IUserMerchantRestrictionCacheService>(),
         sp.GetRequiredService<ILogger<MerchantRiskRule>>()));
 
 // Geographic-based rules
-builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+builder.Services.AddScoped<IFraudDetectionRule>(sp =>
     new GeographicRiskRule(
         sp.GetRequiredService<IGeographicRiskCacheService>(),
         sp.GetRequiredService<IUserGeographicRestrictionCacheService>(),
         sp.GetRequiredService<ILogger<GeographicRiskRule>>()));
-builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+builder.Services.AddScoped<IFraudDetectionRule>(sp =>
     new UserLocationAnomalyRule(
         sp.GetRequiredService<IUserGeographicRestrictionCacheService>(),
         sp.GetRequiredService<ILogger<UserLocationAnomalyRule>>()));
 
 // User-based rules
-builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+builder.Services.AddScoped<IFraudDetectionRule>(sp =>
     new UserRiskRule(sp.GetRequiredService<ILogger<UserRiskRule>>()));
 
 // Velocity-based rules (userId powered)
-builder.Services.AddScoped<IFraudDetectionRule>(sp => 
+builder.Services.AddScoped<IFraudDetectionRule>(sp =>
     new VelocityCheckRule(sp.GetRequiredService<IVelocityCheckService>()));
 
 // Circuit Breaker Policy for Fraud Detection
@@ -93,7 +91,7 @@ builder.Services.AddScoped<FraudDetectionEngine>();
 builder.Services.AddScoped<FallbackFraudExplanationGenerator>();
 
 // Environment'dan API Key'i al
-var openAiApiKey = builder.Configuration["OpenAi:ApiKey"] 
+var openAiApiKey = builder.Configuration["OpenAi:ApiKey"]
     ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 
 if (!string.IsNullOrWhiteSpace(openAiApiKey))
@@ -124,7 +122,7 @@ builder.Services.AddMassTransit(x =>
             h.Username(user);
             h.Password(pass);
         });
-               
+
         cfg.ReceiveEndpoint("fraud.fraud-check-requested", e =>
         {
             e.ConfigureConsumer<FraudCheckRequestedConsumer>(context);

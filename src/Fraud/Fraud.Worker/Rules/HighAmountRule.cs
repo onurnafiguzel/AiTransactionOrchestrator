@@ -18,7 +18,7 @@ public sealed class HighAmountRule(
     public async Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
     {
         // Get user-specific threshold from Redis (premium users have higher limits)
-        var userThreshold = await userThresholdCache.GetUserThresholdAsync(context.UserId, ct) 
+        var userThreshold = await userThresholdCache.GetUserThresholdAsync(context.UserId, ct)
             ?? VeryHighAmountThreshold;
 
         if (context.Amount >= userThreshold)

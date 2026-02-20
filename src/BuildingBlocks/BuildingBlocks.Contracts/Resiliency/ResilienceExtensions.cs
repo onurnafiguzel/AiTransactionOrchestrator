@@ -104,7 +104,7 @@ public static class ResilienceExtensions
                 {
                     var statusCode = args.Outcome.Result?.StatusCode.ToString() ?? "N/A";
                     var exType = args.Outcome.Exception?.GetType().Name ?? "N/A";
-                    
+
                     logger.LogWarning(
                         "HTTP operation retry attempt {Attempt} after {Delay}ms. StatusCode: {StatusCode}, Exception: {ExceptionType}",
                         args.AttemptNumber,

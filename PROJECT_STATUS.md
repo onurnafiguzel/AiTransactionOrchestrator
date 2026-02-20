@@ -79,10 +79,6 @@
 
 ---
 
-#### Comprehensive Retry Policy
-**Öncelik:** P1  
-**Süre:** 8-10 saat  
-
 **Problem:**
 - Transient failures düzgün handle edilmiyor
 - Database connection errors için retry yok
@@ -434,7 +430,6 @@
 
 **Must Have:**
 - [ ] Bulkhead Pattern (8h)
-- [ ] Comprehensive Retry Policy (10h)
 - [ ] Timeout Policy (6h)
 - [ ] Dead Letter Queue Handling (10h)
 - [ ] Load testing (12h)
@@ -492,7 +487,6 @@
 | Özellik | Durum | Blocker |
 |---------|-------|---------|
 | Bulkhead Pattern |  |  NO |
-| Retry Policy |  |  NO |
 | Timeout Policy |  |  NO |
 | DLQ Handling |  |  NO |
 | Health Checks |  Basic |  NO |

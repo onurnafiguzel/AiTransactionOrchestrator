@@ -1,5 +1,4 @@
 using StackExchange.Redis;
-using Microsoft.Extensions.Logging;
 
 namespace Fraud.Worker.Rules;
 
@@ -22,7 +21,7 @@ public sealed class RedisMerchantRiskCacheService : IMerchantRiskCacheService
 {
     private readonly IDatabase _db;
     private readonly ILogger<RedisMerchantRiskCacheService> _logger;
-    
+
     private const string BlacklistKey = "merchant:blacklist";
     private const string WhitelistKey = "merchant:whitelist";
 

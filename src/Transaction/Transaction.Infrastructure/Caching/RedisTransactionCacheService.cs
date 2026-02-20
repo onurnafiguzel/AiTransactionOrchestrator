@@ -1,8 +1,8 @@
+using BuildingBlocks.Contracts.Resiliency;
+using Microsoft.Extensions.Logging;
+using Polly;
 using StackExchange.Redis;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
-using BuildingBlocks.Contracts.Resiliency;
-using Polly;
 
 namespace Transaction.Infrastructure.Caching;
 
@@ -21,7 +21,7 @@ public sealed class RedisTransactionCacheService : ITransactionCacheService
     private readonly IDatabase _db;
     private readonly ILogger<RedisTransactionCacheService> _logger;
     private readonly ResiliencePipeline _resiliencePipeline;
-    
+
     private const string KeyPrefix = "transaction:";
 
     public RedisTransactionCacheService(
@@ -46,7 +46,7 @@ public sealed class RedisTransactionCacheService : ITransactionCacheService
             {
                 var key = $"{KeyPrefix}{transactionId}";
                 var json = JsonSerializer.Serialize(data);
-                
+
                 await _db.StringSetAsync(key, json, TimeSpan.FromMinutes(ttlMinutes));
                 _logger.LogDebug("Transaction {TransactionId} cached for {TtlMinutes} minutes", transactionId, ttlMinutes);
             }, ct);

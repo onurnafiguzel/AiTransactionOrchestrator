@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Fraud.Worker.Caching;
 
 namespace Fraud.Worker.Rules;
@@ -28,7 +27,7 @@ public sealed class UserLocationAnomalyRule(
 
         // Get user's transaction history from Redis
         var userNormalCountries = await userGeoCache.GetUserTransactionCountriesAsync(context.UserId, ct);
-        
+
         // If user has no history, consider all countries normal
         if (userNormalCountries.Length == 0)
         {

@@ -11,7 +11,7 @@ public sealed class Transaction : AggregateRoot
     public decimal Amount { get; private set; }
     public string Currency { get; private set; } = default!;
     public string MerchantId { get; private set; } = default!;
-    public string CustomerIp { get; private set; } = default!; 
+    public string CustomerIp { get; private set; } = default!;
 
     public TransactionStatus Status { get; private set; }
     public bool IsDeleted { get; private set; }

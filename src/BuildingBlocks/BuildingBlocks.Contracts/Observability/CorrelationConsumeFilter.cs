@@ -1,6 +1,5 @@
 ﻿using BuildingBlocks.Contracts.Observability;
 using MassTransit;
-using Serilog.Context;
 
 namespace BuildingBlocks.Observability;
 

@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace Fraud.Worker.Rules;
 
 /// <summary>
@@ -16,7 +14,7 @@ public sealed class UserRiskRule(
     public Task<FraudRuleResult> EvaluateAsync(FraudDetectionContext context, CancellationToken ct)
     {
         // Basic user ID validation and pattern checks
-        
+
         // Eğer kullanıcı ID default/test value ise risk var
         if (context.UserId == Guid.Empty)
         {
@@ -34,7 +32,7 @@ public sealed class UserRiskRule(
 
         // Note: For more advanced user risk checks (new_account, blacklist status),
         // user creation date should be added to FraudDetectionContext and checked against Redis user profiles
-        
+
         logger.LogDebug("User {UserId} risk score: {RiskScore}", context.UserId, riskScore);
 
         return Task.FromResult(new FraudRuleResult(

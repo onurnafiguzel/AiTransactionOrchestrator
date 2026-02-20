@@ -1,7 +1,6 @@
 using BuildingBlocks.Observability;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -173,7 +172,7 @@ builder.Services.AddRateLimiter(options =>
     options.OnRejected = async (context, cancellationToken) =>
     {
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        
+
         TimeSpan? retryAfter = null;
         if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfterValue))
         {

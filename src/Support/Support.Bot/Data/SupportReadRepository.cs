@@ -1,6 +1,5 @@
 ﻿using Dapper;
 using Npgsql;
-using System.Transactions;
 
 namespace Support.Bot.Data;
 

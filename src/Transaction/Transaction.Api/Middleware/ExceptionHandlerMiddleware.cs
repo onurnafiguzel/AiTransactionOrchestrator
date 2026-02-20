@@ -24,16 +24,16 @@ public sealed class ExceptionHandlerMiddleware(RequestDelegate next, ILogger<Exc
 
     private static Task HandleExceptionAsync(HttpContext context, Exception exception, ILogger<ExceptionHandlerMiddleware> logger)
     {
-        var correlationId = CorrelationContext.CorrelationId ?? 
-            (context.Request.Headers.TryGetValue(Correlation.HeaderName, out var values) 
-                ? values.ToString() 
+        var correlationId = CorrelationContext.CorrelationId ??
+            (context.Request.Headers.TryGetValue(Correlation.HeaderName, out var values)
+                ? values.ToString()
                 : Guid.NewGuid().ToString("N"));
 
         var response = context.Response;
         response.ContentType = "application/json";
 
         var (statusCode, title, detail) = MapExceptionToResponse(exception);
-        
+
         response.StatusCode = statusCode;
 
         // Log exception with context

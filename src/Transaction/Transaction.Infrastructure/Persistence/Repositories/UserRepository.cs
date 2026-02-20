@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Transaction.Application.Abstractions;
 using Transaction.Domain.Users;
-using Transaction.Infrastructure.Persistence;
 
 namespace Transaction.Infrastructure.Persistence.Repositories;
 

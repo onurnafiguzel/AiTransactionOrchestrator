@@ -1,4 +1,3 @@
-using BuildingBlocks.Contracts.Resiliency;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BuildingBlocks.Contracts.Resiliency;

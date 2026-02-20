@@ -1,6 +1,6 @@
-﻿using Serilog.Core;
+﻿using BuildingBlocks.Contracts.Observability;
+using Serilog.Core;
 using Serilog.Events;
-using BuildingBlocks.Contracts.Observability;
 
 namespace BuildingBlocks.Observability;
 

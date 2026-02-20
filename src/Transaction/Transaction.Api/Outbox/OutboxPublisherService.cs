@@ -41,7 +41,7 @@ public sealed class OutboxPublisherService(
 
                 foreach (var row in claimed)
                 {
-                    await PublishOne(db,publish, row.Id, stoppingToken);
+                    await PublishOne(db, publish, row.Id, stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

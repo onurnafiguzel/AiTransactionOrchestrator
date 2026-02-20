@@ -20,13 +20,13 @@ public sealed class IpAddressMiddleware
     {
         // Extract IP from HttpContext
         var clientIp = IpAddressExtractor.GetClientIpAddress(context);
-        
+
         // Store in scoped service (accessible in handlers via DI)
         ipContext.ClientIpAddress = clientIp;
-        
+
         // Store in HttpContext.Items (accessible in this request context)
         context.Items["ClientIpAddress"] = clientIp;
-        
+
         // Add to response header for client visibility
         context.Response.Headers.Append("X-Client-IP", clientIp);
 

@@ -20,9 +20,9 @@ public sealed class HealthEndpointHostedService(IConfiguration configuration) : 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         var port = configuration.GetValue("Health:Port", 5104);
-        var rabbitMq = configuration.GetValue<string>("Health:RabbitMq") 
+        var rabbitMq = configuration.GetValue<string>("Health:RabbitMq")
             ?? "amqp://admin:admin@localhost:5672";
-        var redis = configuration.GetValue<string>("Health:Redis") 
+        var redis = configuration.GetValue<string>("Health:Redis")
             ?? "localhost:6379";
         var postgres = configuration.GetValue<string?>("Health:Postgres");
 
@@ -110,7 +110,7 @@ public sealed class HealthEndpointHostedService(IConfiguration configuration) : 
                 _ => "❓ Unknown status"
             },
             totalDuration = report.TotalDuration.TotalMilliseconds.ToString("F2") + "ms",
-            
+
             // 📊 DETAILED CHECKS
             checks = report.Entries.ToDictionary(
                 entry => entry.Key,

@@ -1,8 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using BuildingBlocks.Contracts.Resiliency;
 using Microsoft.Extensions.Options;
 using OpenAI.Chat;
-using OpenAI;
-using BuildingBlocks.Contracts.Resiliency;
 using Polly;
 
 namespace Fraud.Worker.AI;
@@ -20,11 +18,11 @@ public sealed class OpenAiFraudExplanationGenerator : IFraudExplanationGenerator
     {
         _options = options;
         _logger = logger;
-        
+
         // Create custom retry pipeline for external API calls
         _resiliencePipeline = pipelineFactory.CreateCustomPipeline(
-            shouldHandle: ex => 
-                ex is HttpRequestException || 
+            shouldHandle: ex =>
+                ex is HttpRequestException ||
                 ex is TaskCanceledException ||
                 ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
                 ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase),

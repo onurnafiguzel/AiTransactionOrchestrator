@@ -1,5 +1,5 @@
-using BuildingBlocks.Contracts.Observability;
 using BuildingBlocks.Contracts.Common;
+using BuildingBlocks.Contracts.Observability;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +17,7 @@ namespace Transaction.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
-[Authorize] 
+[Authorize]
 public sealed class TransactionController(
     ISender mediator,
     ITransactionRepository repository,
@@ -44,8 +44,8 @@ public sealed class TransactionController(
         [FromBody] CreateTransactionRequest request,
         CancellationToken cancellationToken)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;        
-        
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
         if (string.IsNullOrEmpty(userIdClaim))
         {
             return Unauthorized(new { error = "UserId not found in token" });
@@ -212,17 +212,17 @@ public sealed class TransactionController(
     [EnableRateLimiting("transaction-query")]
     public IActionResult DebugAuth()
     {
-    var authHeader = HttpContext.Request.Headers["Authorization"].ToString();
-    
-    return Ok(new
-    {
-        AuthorizationHeader = authHeader,
-        IsAuthenticated = User.Identity?.IsAuthenticated,
-        UserName = User.Identity?.Name,
-        AuthenticationType = User.Identity?.AuthenticationType,
-        ClaimsCount = User.Claims.Count(),
-        Claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList()
-    });
+        var authHeader = HttpContext.Request.Headers["Authorization"].ToString();
+
+        return Ok(new
+        {
+            AuthorizationHeader = authHeader,
+            IsAuthenticated = User.Identity?.IsAuthenticated,
+            UserName = User.Identity?.Name,
+            AuthenticationType = User.Identity?.AuthenticationType,
+            ClaimsCount = User.Claims.Count(),
+            Claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList()
+        });
     }
 }
 

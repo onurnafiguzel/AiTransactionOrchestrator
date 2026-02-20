@@ -75,7 +75,7 @@ public sealed class FraudCheckRequestedConsumer(
                 amount: msg.Amount,
                 merchant: msg.MerchantId,
                 country: fraudContext.CustomerCountry ?? "Unknown");
-                
+
             logger.LogWarning("Transaction rejected - recorded for velocity check. UserId: {UserId}",
                 msg.UserId);
         }

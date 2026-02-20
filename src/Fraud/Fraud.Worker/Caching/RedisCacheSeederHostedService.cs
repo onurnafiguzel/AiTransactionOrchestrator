@@ -1,6 +1,4 @@
 using Fraud.Worker.Rules;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace Fraud.Worker.Caching;
 

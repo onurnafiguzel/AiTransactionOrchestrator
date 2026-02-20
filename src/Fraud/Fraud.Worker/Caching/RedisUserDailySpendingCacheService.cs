@@ -1,5 +1,4 @@
 using StackExchange.Redis;
-using Microsoft.Extensions.Logging;
 
 namespace Fraud.Worker.Caching;
 
@@ -62,7 +61,7 @@ public sealed class RedisUserDailySpendingCacheService(
                 return limit;
             }
 
-            logger.LogDebug("Daily limit not found for user {UserId}, using default: {DefaultLimit}", 
+            logger.LogDebug("Daily limit not found for user {UserId}, using default: {DefaultLimit}",
                 userId, DefaultDailyLimit);
             return DefaultDailyLimit;
         }
