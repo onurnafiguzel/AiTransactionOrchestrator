@@ -1,9 +1,6 @@
 using BuildingBlocks.Observability;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using Serilog;
 using StackExchange.Redis;
 using Transaction.Infrastructure;
@@ -19,26 +16,9 @@ builder.Services.AddSerilog((sp, lc) =>
       .Enrich.FromLogContext()
       .Enrich.With<CorrelationIdEnricher>());
 
-// Add OpenTelemetry instrumentation
-var resourceBuilder = ResourceBuilder.CreateDefault().AddService("Transaction.Updater");
-
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(r => r.AddService("Transaction.Updater"))
-    .WithTracing(tracingBuilder =>
-    {
-        tracingBuilder
-            .SetResourceBuilder(resourceBuilder)
-            .AddHttpClientInstrumentation()
-            .AddSqlClientInstrumentation();
-    })
-    .WithMetrics(metricsBuilder =>
-    {
-        metricsBuilder
-            .SetResourceBuilder(resourceBuilder)
-            .AddHttpClientInstrumentation()
-            .AddRuntimeInstrumentation()
-            .AddPrometheusHttpListener(options => options.UriPrefixes = new string[] { $"http://+:5030/" });
-    });
+// Add OpenTelemetry instrumentation with distributed tracing
+builder.AddOpenTelemetryWorker("Transaction.Updater");
+builder.Services.AddMassTransitInstrumentation();
 
 var cs = builder.Configuration.GetConnectionString("TransactionDb")
          ?? "Host=localhost;Port=5432;Database=ato_db;Username=ato;Password=ato_pass";

@@ -7,6 +7,16 @@ using Transaction.Orchestrator.Worker.Timeline;
 
 namespace Transaction.Orchestrator.Worker.Saga;
 
+internal sealed class NullDisposable : IDisposable
+{
+    public static readonly NullDisposable Instance = new();
+    
+    public void Dispose()
+    {
+        // No-op disposable
+    }
+}
+
 public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachine<TransactionOrchestrationState>
 {
     private readonly ILogger<TransactionOrchestrationStateMachine> logger;
@@ -232,7 +242,7 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                             using (BeginSagaScope(ctx))
                             {
                                 logger.LogInformation(
-                                    "Published TransactionRejected | Decision={Decision} | RiskScore={RiskScore}",
+                                    "Published TransactionRejected | Reason={Reason} | Decision={Decision} | RiskScore={RiskScore}",
                                     "FraudDecisionReject",
                                     ctx.Message.Decision,
                                     ctx.Message.RiskScore);
@@ -270,7 +280,7 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
                     using (BeginSagaScope(ctx))
                     {
                         logger.LogWarning(
-                            "Fraud timeout expired | Retry={Retry}",
+                            "Fraud timeout expired | Retry={Retry} | MaxRetry={MaxRetry}",
                             ctx.Saga.RetryCount,
                             MaxRetry);
                     }
@@ -491,12 +501,14 @@ public sealed class TransactionOrchestrationStateMachine : MassTransitStateMachi
             ? GetCorrelationId(ctx, null)
             : ctx.Saga.CorrelationKey;
 
-        return logger.BeginScope(new Dictionary<string, object>
+        var scope = logger.BeginScope(new Dictionary<string, object>
         {
             ["correlation_id"] = cid,
             ["transaction_id"] = ctx.Saga.TransactionId,
             ["state"] = ctx.Saga.CurrentState
         });
+        
+        return scope ?? NullDisposable.Instance;
     }
 
     private void LogTransition(string from, string to)

@@ -64,8 +64,11 @@ public sealed class SupportController(
         var saga = await repository.GetSaga(transactionId, cancellationToken);
 
         // Build summary
+        var statusName = Enum.GetName(typeof(TransactionStatus), transaction.Status)
+            ?? transaction.Status.ToString();
+
         var (summary, reason) = SupportSummaryBuilder.Build(
-            status: Enum.GetName(typeof(TransactionStatus), transaction.Status),
+            status: statusName,
             decisionReason: transaction.Decision_Reason,
             retryCount: saga?.retry_Count ?? 0,
             timedOutAtUtc: saga?.timed_out_at_utc);
@@ -84,7 +87,7 @@ public sealed class SupportController(
         // Build report
         var report = new SupportTransactionReport(
             TransactionId: transactionId,
-            Status: Enum.GetName(typeof(TransactionStatus), transaction.Status),
+            Status: statusName,
             Reason: transaction.Decision_Reason ?? reason,
             Summary: summary,
             Explanation: transaction.Explanation,

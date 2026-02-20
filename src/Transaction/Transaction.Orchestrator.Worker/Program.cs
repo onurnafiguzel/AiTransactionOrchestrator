@@ -1,9 +1,6 @@
 ﻿using BuildingBlocks.Observability;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using Quartz;
 using Serilog;
 using Transaction.Orchestrator.Worker.Health;
@@ -18,26 +15,9 @@ builder.Services.AddSerilog((sp, lc) =>
       .Enrich.FromLogContext()
       .Enrich.With<CorrelationIdEnricher>());
 
-// Add OpenTelemetry instrumentation
-var resourceBuilder = ResourceBuilder.CreateDefault().AddService("Transaction.Orchestrator");
-
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(r => r.AddService("Transaction.Orchestrator"))
-    .WithTracing(tracingBuilder =>
-    {
-        tracingBuilder
-            .SetResourceBuilder(resourceBuilder)
-            .AddHttpClientInstrumentation()
-            .AddSqlClientInstrumentation();
-    })
-    .WithMetrics(metricsBuilder =>
-    {
-        metricsBuilder
-            .SetResourceBuilder(resourceBuilder)
-            .AddHttpClientInstrumentation()
-            .AddRuntimeInstrumentation()
-            .AddPrometheusHttpListener(options => options.UriPrefixes = new string[] { $"http://+:5020/" });
-    });
+// Add OpenTelemetry instrumentation with distributed tracing
+builder.AddOpenTelemetryWorker("Transaction.Orchestrator");
+builder.Services.AddMassTransitInstrumentation();
 
 var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
 var rabbitUser = builder.Configuration["RabbitMq:Username"] ?? "admin";

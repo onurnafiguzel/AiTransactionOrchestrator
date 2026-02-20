@@ -114,6 +114,9 @@ services:
       RabbitMq__Username: admin
       RabbitMq__Password: admin
       Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
+      Tracing__Jaeger__Enabled: "true"
+      Tracing__Jaeger__Host: "jaeger"
+      Tracing__Jaeger__Port: "4317"
     ports:
       - "5000:5000"
     depends_on:
@@ -148,6 +151,9 @@ services:
       RabbitMq__Password: admin
       Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
       Health__Port: "5010"
+      Tracing__Jaeger__Enabled: "true"
+      Tracing__Jaeger__Host: "jaeger"
+      Tracing__Jaeger__Port: "4317"
       Health__RabbitMq: "amqp://admin:admin@rabbitmq:5672"
       Health__Postgres: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
       FraudExplanation__Enabled: "false"
@@ -183,6 +189,9 @@ services:
       Health__Port: "5020"
       Health__RabbitMq: "amqp://admin:admin@rabbitmq:5672"
       Health__Postgres: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
+      Tracing__Jaeger__Enabled: "true"
+      Tracing__Jaeger__Host: "jaeger"
+      Tracing__Jaeger__Port: "4317"
     ports:
       - "5020:5020"
     depends_on:
@@ -214,6 +223,9 @@ services:
       Health__Port: "5030"
       Health__RabbitMq: "amqp://admin:admin@rabbitmq:5672"
       Health__Postgres: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
+      Tracing__Jaeger__Enabled: "true"
+      Tracing__Jaeger__Host: "jaeger"
+      Tracing__Jaeger__Port: "4317"
     ports:
       - "5030:5030"
     depends_on:
@@ -240,6 +252,9 @@ services:
       ConnectionStrings__SupportDb: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
       ConnectionStrings__Redis: "redis:6379"
       Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
+      Tracing__Jaeger__Enabled: "true"
+      Tracing__Jaeger__Host: "jaeger"
+      Tracing__Jaeger__Port: "4317"
     ports:
       - "5040:5040"
     depends_on:
@@ -276,6 +291,32 @@ services:
       - '--storage.tsdb.retention.time=30d'
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ato-network
+    restart: unless-stopped
+
+  # ==================== DISTRIBUTED TRACING ====================
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: ato-jaeger
+    environment:
+      COLLECTOR_ZIPKIN_HTTP_PORT: "9411"
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "6831:6831/udp"  # Jaeger agent (Thrift compact)
+      - "6832:6832/udp"  # Jaeger agent (Thrift binary)
+      - "5778:5778"      # Serve frontend
+      - "16686:16686"    # Jaeger UI
+      - "14250:14250"    # gRPC
+      - "14268:14268"    # HTTP collector
+      - "4317:4317"      # OTLP gRPC
+      - "4318:4318"      # OTLP HTTP
+      - "9411:9411"      # Zipkin compatible endpoint
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:16686"]
       interval: 10s
       timeout: 5s
       retries: 5

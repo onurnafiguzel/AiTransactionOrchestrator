@@ -203,6 +203,7 @@ Support Bot (Customer Queries)
 
 | Tool | URL | Credentials | Purpose |
 |------|-----|-------------|---------|
+| **Jaeger (Distributed Tracing)** | http://localhost:16686 | - | Trace visualization |
 | **Grafana** | http://localhost:3000 | admin/admin | Metrics dashboards |
 | **Prometheus** | http://localhost:9090 | - | Metrics collection |
 | **AlertManager** | http://localhost:9093 | - | Alert routing |
@@ -234,6 +235,8 @@ curl http://localhost:5040/metrics  # Support Bot
 
 ### Documentation
 
+- **[DISTRIBUTED_TRACING_QUICK_START.md](DISTRIBUTED_TRACING_QUICK_START.md)** - Get started in 30 seconds
+- **[DISTRIBUTED_TRACING.md](DISTRIBUTED_TRACING.md)** - Complete distributed tracing guide
 - **[METRICS_SETUP.md](METRICS_SETUP.md)** - 5-minute quick setup guide
 - **[MONITORING_QUICKSTART.md](MONITORING_QUICKSTART.md)** - Common tasks reference
 - **[MONITORING.md](MONITORING.md)** - Comprehensive monitoring guide

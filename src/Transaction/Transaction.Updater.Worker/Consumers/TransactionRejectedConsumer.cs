@@ -4,14 +4,12 @@ using MassTransit;
 using Transaction.Application.Abstractions;
 using Transaction.Infrastructure.Caching;
 using Transaction.Infrastructure.Inbox;
-using Transaction.Infrastructure.Persistence;
 using Transaction.Updater.Worker.Timeline;
 
 namespace Transaction.Updater.Worker.Consumers;
 
 public sealed class TransactionRejectedConsumer(
     ITransactionRepository repo,
-    TransactionDbContext db,
     InboxGuard guard,
     TimelineWriter timeline,
     IUnitOfWork uow,
