@@ -45,6 +45,13 @@ builder.Services.AddMassTransit(x =>
 
         cfg.ReceiveEndpoint("transaction.outcomes", e =>
         {
+            // Configure message retry with fixed interval (5 retries, 5 seconds between retries)
+            // If all retries fail, message automatically goes to transaction.outcomes-error queue
+            e.UseMessageRetry(r =>
+            {
+                r.Interval(5, TimeSpan.FromSeconds(5));
+            });
+
             e.ConfigureConsumer<TransactionApprovedConsumer>(context);
             e.ConfigureConsumer<TransactionRejectedConsumer>(context);
         });

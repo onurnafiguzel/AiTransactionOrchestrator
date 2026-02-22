@@ -70,10 +70,16 @@ builder.Services.AddMassTransit(x =>
 
         // Quartz scheduler address
         cfg.UseMessageScheduler(new Uri("queue:quartz"));
-
         // Quartz endpoint: scheduled mesajlar burada işlenir
         cfg.ReceiveEndpoint("quartz", e =>
         {
+            // Configure message retry with fixed interval (5 retries, 5 seconds between retries)
+            // If all retries fail, message automatically goes to quartz-error queue
+            e.UseMessageRetry(r =>
+            {
+                r.Interval(5, TimeSpan.FromSeconds(5));
+            });
+
             e.ConfigureQuartzConsumers(context);
         });
 

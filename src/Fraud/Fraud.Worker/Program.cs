@@ -125,6 +125,13 @@ builder.Services.AddMassTransit(x =>
 
         cfg.ReceiveEndpoint("fraud.fraud-check-requested", e =>
         {
+            // Configure message retry with fixed interval (5 retries, 5 seconds between retries)
+            // If all retries fail, message automatically goes to fraud.fraud-check-requested-error queue
+            e.UseMessageRetry(r =>
+            {
+                r.Interval(5, TimeSpan.FromSeconds(5));
+            });
+
             e.ConfigureConsumer<FraudCheckRequestedConsumer>(context);
         });
 
