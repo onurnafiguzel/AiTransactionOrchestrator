@@ -4,6 +4,7 @@ using MassTransit;
 using Transaction.Application.Abstractions;
 using Transaction.Infrastructure.Caching;
 using Transaction.Infrastructure.Inbox;
+using Transaction.Infrastructure.Observability;
 using Transaction.Updater.Worker.Timeline;
 
 namespace Transaction.Updater.Worker.Consumers;
@@ -29,6 +30,8 @@ public sealed class TransactionApprovedConsumer(
 
         CorrelationContext.CorrelationId = cid;
 
+        using var auditScope = AmbientContext.AuditSource.Use($"event:{context.Message.GetType().Name}");
+
         using (Serilog.Context.LogContext.PushProperty("message_id", messageId))
         using (Serilog.Context.LogContext.PushProperty("transaction_id", context.Message.TransactionId))
         {
@@ -44,6 +47,8 @@ public sealed class TransactionApprovedConsumer(
                 logger.LogWarning("Transaction not found. TxId={TransactionId}", context.Message.TransactionId);
                 return;
             }
+
+            using var userScope = AmbientContext.AuditUser.Use(tx.UserId.ToString("N"));
 
             tx.MarkApproved(context.Message.RiskScore, context.Message.Explanation);
             await repo.Save(tx, context.CancellationToken);

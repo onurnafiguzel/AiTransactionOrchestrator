@@ -88,6 +88,13 @@ public sealed class ExceptionHandlerMiddleware(RequestDelegate next, ILogger<Exc
                 ioe.Message
             ),
 
+            // Duplicate/Idempotency conflict
+            InvalidOperationException ioe when ioe.Message.Contains("idempotency key", StringComparison.OrdinalIgnoreCase) => (
+                StatusCodes.Status409Conflict,
+                "Duplicate Request",
+                ioe.Message
+            ),
+
             // Timeout
             OperationCanceledException => (
                 StatusCodes.Status408RequestTimeout,

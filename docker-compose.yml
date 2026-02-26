@@ -106,7 +106,7 @@ services:
       dockerfile: Dockerfile.transaction-api
     container_name: ato-transaction-api
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:5000
       ConnectionStrings__TransactionDb: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
       ConnectionStrings__Redis: "redis:6379"
@@ -114,6 +114,7 @@ services:
       RabbitMq__Username: admin
       RabbitMq__Password: admin
       Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
+      Metrics__Prometheus__Enabled: "true"
       Tracing__Jaeger__Enabled: "true"
       Tracing__Jaeger__Host: "jaeger"
       Tracing__Jaeger__Port: "4317"
@@ -150,6 +151,7 @@ services:
       RabbitMq__Username: admin
       RabbitMq__Password: admin
       Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
+      Metrics__Prometheus__Enabled: "true"
       Health__Port: "5010"
       Tracing__Jaeger__Enabled: "true"
       Tracing__Jaeger__Host: "jaeger"
@@ -186,6 +188,7 @@ services:
       RabbitMq__Username: admin
       RabbitMq__Password: admin
       Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
+      Metrics__Prometheus__Enabled: "true"
       Health__Port: "5020"
       Health__RabbitMq: "amqp://admin:admin@rabbitmq:5672"
       Health__Postgres: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
@@ -220,6 +223,7 @@ services:
       RabbitMq__Password: admin
       ConnectionStrings__Redis: "redis:6379"
       Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
+      Metrics__Prometheus__Enabled: "true"
       Health__Port: "5030"
       Health__RabbitMq: "amqp://admin:admin@rabbitmq:5672"
       Health__Postgres: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
@@ -247,11 +251,12 @@ services:
       dockerfile: Dockerfile.support-bot
     container_name: ato-support-bot
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:5040
       ConnectionStrings__SupportDb: "Host=postgres;Port=5432;Database=ato_db;Username=ato;Password=ato_pass"
       ConnectionStrings__Redis: "redis:6379"
       Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
+      Metrics__Prometheus__Enabled: "true"
       Tracing__Jaeger__Enabled: "true"
       Tracing__Jaeger__Host: "jaeger"
       Tracing__Jaeger__Port: "4317"

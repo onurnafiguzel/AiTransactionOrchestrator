@@ -21,7 +21,9 @@ public sealed class CreateTransactionHandler(
         var existingTransactionId = await outbox.TryGetExistingTransactionId(request.IdempotencyKey, ct);
         if (existingTransactionId.HasValue)
         {
-            return existingTransactionId.Value;
+            throw new InvalidOperationException(
+                $"Request with idempotency key '{request.IdempotencyKey}' has already been processed. " +
+                $"Existing transaction ID: {existingTransactionId.Value}");
         }
 
         var customerIp = ipContext.ClientIpAddress;

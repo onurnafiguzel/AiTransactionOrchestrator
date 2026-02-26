@@ -308,12 +308,6 @@
 
 ---
 
-#### Audit Logging
-**Öncelik:** P2  
-**Süre:** 8-10 saat  
-
----
-
 #### Security Monitoring
 **Öncelik:** P2  
 **Süre:** 10-12 saat  

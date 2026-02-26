@@ -136,6 +136,7 @@ public static class OpenTelemetryExtensions
         var otlpEndpoint = configuration["Tracing:Otlp:Endpoint"]
             ?? $"http://{jaegerHost}:{jaegerPort}";
         var healthPort = configuration.GetValue<int>("Health:Port", 8080);
+        var prometheusEnabled = configuration.GetValue<bool>("Metrics:Prometheus:Enabled", true);
 
         services.AddOpenTelemetry()
             .ConfigureResource(r => r.AddService(serviceName))
@@ -163,9 +164,13 @@ public static class OpenTelemetryExtensions
                 metricsBuilder
                     .SetResourceBuilder(resourceBuilder)
                     .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation()
-                    .AddPrometheusHttpListener(options =>
+                    .AddRuntimeInstrumentation();
+
+                if (prometheusEnabled)
+                {
+                    metricsBuilder.AddPrometheusHttpListener(options =>
                         options.UriPrefixes = new[] { $"http://+:{healthPort}/" });
+                }
             });
     }
 

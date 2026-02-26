@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Transaction.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Transaction.Infrastructure.Persistence;
 namespace Transaction.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TransactionDbContext))]
-    partial class TransactionDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260224223221_auditTable2")]
+    partial class auditTable2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -46,6 +49,10 @@ namespace Transaction.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(512)")
                         .HasColumnName("EventOrApiName");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("Metadata");
 
                     b.Property<string>("NewValues")
                         .HasColumnType("jsonb")
