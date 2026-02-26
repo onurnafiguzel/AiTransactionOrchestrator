@@ -101,16 +101,6 @@
 
 ---
 
-#### Dead Letter Queue (DLQ) Handling
-**Öncelik:** P1  
-**Süre:** 8-10 saat  
-
-**Problem:**
-- Failed messages kaybolabiliyor
-- Poison message handling yok
-
----
-
 #### Fallback Pattern (Comprehensive)
 **Öncelik:** P2  
 **Süre:** 6-8 saat  
@@ -472,7 +462,6 @@
 |---------|-------|---------|
 | Bulkhead Pattern |  |  NO |
 | Timeout Policy |  |  NO |
-| DLQ Handling |  |  NO |
 | Health Checks |  Basic |  NO |
 
 ---
