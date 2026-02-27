@@ -3,7 +3,6 @@ using BuildingBlocks.Contracts.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 using Transaction.Application.Abstractions;
 using Transaction.Application.Users;
 
@@ -32,7 +31,6 @@ public sealed class AuthController(
     /// <response code="429">Too many requests - rate limit exceeded</response>
     [HttpPost("signup")]
     [AllowAnonymous]
-    [EnableRateLimiting("auth")]
     public async Task<ActionResult> SignUp(
         [FromBody] SignUpRequest request,
         CancellationToken cancellationToken)
@@ -63,7 +61,6 @@ public sealed class AuthController(
     /// <response code="429">Too many requests - rate limit exceeded</response>
     [HttpPost("login")]
     [AllowAnonymous]
-    [EnableRateLimiting("auth")]
     public async Task<ActionResult<LoginResult>> Login(
         [FromBody] LoginRequest request,
         CancellationToken cancellationToken)

@@ -100,6 +100,42 @@ services:
       - ato-network
 
   # ==================== APPLICATIONS ====================
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    container_name: ato-gateway
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5100
+      Jwt__SecretKey: "your-256-bit-secret-key-min-32chars-change-this-in-production!"
+      Jwt__Issuer: "AiTransactionOrchestrator"
+      Jwt__Audience: "AiTransactionOrchestrator"
+      Serilog__WriteTo__0__Args__nodeUris: "http://elasticsearch:9200"
+      Metrics__Prometheus__Enabled: "true"
+      Tracing__Jaeger__Enabled: "true"
+      Tracing__Jaeger__Host: "jaeger"
+      Tracing__Jaeger__Port: "4317"
+      ReverseProxy__Clusters__transaction-api__Destinations__primary__Address: "http://transaction-api:5000"
+      ReverseProxy__Clusters__support-bot__Destinations__primary__Address: "http://support-bot:5040"
+    ports:
+      - "5100:5100"
+    depends_on:
+      transaction-api:
+        condition: service_healthy
+      support-bot:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5100/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ato-network
+    restart: unless-stopped
+
   transaction-api:
     build:
       context: .

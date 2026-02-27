@@ -4,7 +4,6 @@ using BuildingBlocks.Contracts.Observability;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using Transaction.Application.Abstractions;
 using Transaction.Application.Transactions;
@@ -41,7 +40,6 @@ public sealed class TransactionController(
     /// <response code="429">Too many requests - rate limit exceeded</response>
     /// <response code="500">Internal server error</response>
     [HttpPost]
-    [EnableRateLimiting("transaction-create")]
     public async Task<ActionResult> Create(
         [FromBody] CreateTransactionRequest request,
         CancellationToken cancellationToken)
@@ -113,7 +111,6 @@ public sealed class TransactionController(
     /// <response code="429">Too many requests - rate limit exceeded</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("{id:guid}")]
-    [EnableRateLimiting("transaction-query")]
     public async Task<ActionResult> GetById(
         Guid id,
         CancellationToken cancellationToken)
@@ -168,7 +165,6 @@ public sealed class TransactionController(
     /// <response code="429">Too many requests - rate limit exceeded</response>
     /// <response code="500">Internal server error</response>
     [HttpGet]
-    [EnableRateLimiting("transaction-query")]
     public async Task<ActionResult<PagedResponse<object>>> GetAll(
         [FromQuery] PagedRequest request,
         CancellationToken cancellationToken)
@@ -211,7 +207,6 @@ public sealed class TransactionController(
 
 
     [HttpPost("debug")]
-    [EnableRateLimiting("transaction-query")]
     public IActionResult DebugAuth()
     {
         var authHeader = HttpContext.Request.Headers["Authorization"].ToString();

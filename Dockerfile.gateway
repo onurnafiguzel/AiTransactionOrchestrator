@@ -1,0 +1,26 @@
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS builder
+
+WORKDIR /build
+
+# Copy solution and project files
+COPY . .
+
+# Restore and publish
+RUN dotnet restore "src/Gateway/Gateway.Yarp/Gateway.Yarp.csproj"
+RUN dotnet publish "src/Gateway/Gateway.Yarp/Gateway.Yarp.csproj" -c Release -o /publish --no-restore
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine
+
+WORKDIR /app
+
+# Copy published files from builder
+COPY --from=builder /publish .
+
+# Health check for container
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:5100/health/live || exit 1
+
+# Run the application
+ENTRYPOINT ["dotnet", "Gateway.Yarp.dll"]

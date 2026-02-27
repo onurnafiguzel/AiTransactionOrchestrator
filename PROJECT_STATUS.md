@@ -12,12 +12,12 @@
 |--------|-------|--------|
 | **Kod Tamamlanma** | 99% |  Excellent |
 | **Test Coverage** | 0% |  Critical |
-| **Microservices** | 5/5 |  Complete |
+| **Microservices** | 6/6 |  Complete |
 | **Infrastructure** | 5/5 |  Complete |
 | **Monitoring** | 3/3 |  Complete |
 | **Distributed Tracing** | Jaeger |  Complete |
 | **Resiliency Patterns** | 9/16 |  56% |
-| **System Design** | 9/20 |  45% |
+| **System Design** | 10/20 |  50% |
 | **Observability** | 8/22 |  36% |
 
 ---
@@ -95,14 +95,6 @@
 ---
 
 ### System Design
-
-#### 9. API Gateway Pattern
-**Süre:** 15-20 saat
-
-- Clients direkt servislere erişiyor
-- Tek giriş noktası yok
-
----
 
 #### 10. Read Replicas
 **Süre:** 8-10 saat
@@ -286,7 +278,6 @@
 
 ### Sprint 4+: Scale & Features (İsteğe Bağlı)
 
-- [ ] API Gateway (20h)
 - [ ] Read Replicas (10h)
 - [ ] Service Discovery (10h)
 - [ ] Webhook notifications (10h)
