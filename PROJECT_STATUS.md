@@ -1,6 +1,6 @@
 ﻿# AI Transaction Orchestrator - Yapılacaklar
 
-**Son Güncelleme:** 26 Şubat 2026  
+**Son Güncelleme:** 27 Şubat 2026  
 **Mevcut Durum:**  98% Code Complete - Testing Required  
 **Sonraki Aşama:** Unit & Integration Testing
 
@@ -16,7 +16,7 @@
 | **Infrastructure** | 5/5 |  Complete |
 | **Monitoring** | 3/3 |  Complete |
 | **Distributed Tracing** | Jaeger |  Complete |
-| **Resiliency Patterns** | 8/16 |  50% |
+| **Resiliency Patterns** | 9/16 |  56% |
 | **System Design** | 8/20 |  40% |
 | **Observability** | 8/22 |  36% |
 
@@ -62,23 +62,6 @@
 
 ### 4. Bulkhead Pattern
 **Süre:** 6-8 saat
-
-**Problem:**
-- Thread pool exhaustion riski
-- Cascade failures
-- Bir bağımlılık hatası tüm sistemi etkiler
-
-**Not:** ConcurrencyLimiter mevcut ama Polly Bulkhead isolation eksik.
-
----
-
-### 5. Timeout Policy
-**Süre:** 4-6 saat
-
-**Problem:**
-- Hanging requests sistemi bloke eder
-- Resource leak riski
-- Polly Timeout strategy henüz yok
 
 ---
 
@@ -281,10 +264,9 @@
 
 ### Sprint 2: Resiliency Hardening (2 hafta)
 **Status:**  Not Started  
-**Total:** ~32 saat
+**Total:** ~26 saat
 
 - [ ] Bulkhead Pattern (8h)
-- [ ] Timeout Policy (6h)
 - [ ] Fallback Pattern (6h)
 - [ ] Health check enhancements (6h)
 - [ ] Graceful degradation (6h)
@@ -327,7 +309,6 @@
 | Integration Tests |  0% |  YES |
 | Load Testing |  Yok |  YES |
 | Bulkhead Pattern |  Yok |  NO |
-| Timeout Policy |  Yok |  NO |
 | Health Checks |  Basic |  NO |
 
 ---
@@ -341,14 +322,14 @@
 - DDD + CQRS + Saga mimarisi
 - OpenTelemetry + Jaeger distributed tracing
 - Prometheus + Grafana + AlertManager monitoring
-- Polly retry (DB/Redis/HTTP) + Circuit Breaker
+- Polly retry (DB/Redis/HTTP) + Circuit Breaker + Timeout
 - Request Idempotency + AuditLog
 - Docker-ready + 5 mikroservis
 
 **Kritik Eksikler:**
 - Test coverage %0
 - Load testing yok
-- Bulkhead & Timeout policy yok
+- Bulkhead policy yok
 
 ### Timeline
 
@@ -360,6 +341,6 @@
 
 ---
 
-**Son Güncelleme:** 26 Şubat 2026  
-**Sonraki İnceleme:** 5 Mart 2026  
+**Son Güncelleme:** 27 Şubat 2026  
+**Sonraki İnceleme:** 6 Mart 2026  
 **Sorumlu:** Development Team

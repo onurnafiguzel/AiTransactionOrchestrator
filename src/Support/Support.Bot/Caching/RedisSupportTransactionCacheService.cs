@@ -35,7 +35,7 @@ public sealed class RedisSupportTransactionCacheService : ISupportTransactionCac
     {
         _db = redis.GetDatabase();
         _logger = logger;
-        _resiliencePipeline = pipelineFactory.GetRedisPipeline();
+        _resiliencePipeline = pipelineFactory.GetRedisRetryWithTimeoutPipeline();
     }
 
     public async Task SetSupportTransactionAsync<T>(

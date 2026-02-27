@@ -86,3 +86,50 @@ public sealed class MessageQueueRetryOptions : RetryOptions
         UseJitter = true;
     }
 }
+
+/// <summary>
+/// Configuration options for timeout policies.
+/// </summary>
+public class TimeoutOptions
+{
+    /// <summary>
+    /// Timeout duration in seconds.
+    /// </summary>
+    public double TimeoutSeconds { get; init; } = 30.0;
+}
+
+/// <summary>
+/// Timeout options for database operations.
+/// Default: 15 seconds.
+/// </summary>
+public sealed class DatabaseTimeoutOptions : TimeoutOptions
+{
+    public DatabaseTimeoutOptions()
+    {
+        TimeoutSeconds = 15.0;
+    }
+}
+
+/// <summary>
+/// Timeout options for Redis operations.
+/// Default: 5 seconds.
+/// </summary>
+public sealed class RedisTimeoutOptions : TimeoutOptions
+{
+    public RedisTimeoutOptions()
+    {
+        TimeoutSeconds = 5.0;
+    }
+}
+
+/// <summary>
+/// Timeout options for HTTP/API operations.
+/// Default: 30 seconds.
+/// </summary>
+public sealed class HttpTimeoutOptions : TimeoutOptions
+{
+    public HttpTimeoutOptions()
+    {
+        TimeoutSeconds = 30.0;
+    }
+}

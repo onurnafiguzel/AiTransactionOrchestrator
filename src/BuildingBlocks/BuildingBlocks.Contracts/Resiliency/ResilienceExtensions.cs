@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Polly;
 using Polly.Contrib.WaitAndRetry;
 using Polly.Retry;
+using Polly.Timeout;
 
 namespace BuildingBlocks.Contracts.Resiliency;
 
@@ -130,6 +131,234 @@ public static class ResilienceExtensions
             medianFirstRetryDelay: seedDelay,
             retryCount: maxRetries,
             fastFirst: true);
+    }
+
+    // ==================== TIMEOUT PIPELINES ====================
+
+    /// <summary>
+    /// Create a timeout pipeline for database operations.
+    /// Prevents hanging database queries from blocking threads indefinitely.
+    /// </summary>
+    public static ResiliencePipeline CreateDatabaseTimeoutPipeline(
+        ILogger logger,
+        DatabaseTimeoutOptions? options = null)
+    {
+        options ??= new DatabaseTimeoutOptions();
+
+        return new ResiliencePipelineBuilder()
+            .AddTimeout(new TimeoutStrategyOptions
+            {
+                Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds),
+                OnTimeout = args =>
+                {
+                    logger.LogWarning(
+                        "Database operation timed out after {Timeout}s",
+                        args.Timeout.TotalSeconds);
+                    return default;
+                }
+            })
+            .Build();
+    }
+
+    /// <summary>
+    /// Create a timeout pipeline for Redis operations.
+    /// Prevents hanging cache calls from blocking the request pipeline.
+    /// </summary>
+    public static ResiliencePipeline CreateRedisTimeoutPipeline(
+        ILogger logger,
+        RedisTimeoutOptions? options = null)
+    {
+        options ??= new RedisTimeoutOptions();
+
+        return new ResiliencePipelineBuilder()
+            .AddTimeout(new TimeoutStrategyOptions
+            {
+                Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds),
+                OnTimeout = args =>
+                {
+                    logger.LogWarning(
+                        "Redis operation timed out after {Timeout}s",
+                        args.Timeout.TotalSeconds);
+                    return default;
+                }
+            })
+            .Build();
+    }
+
+    /// <summary>
+    /// Create a timeout pipeline for HTTP operations.
+    /// Prevents slow external API calls from blocking the system.
+    /// </summary>
+    public static ResiliencePipeline<HttpResponseMessage> CreateHttpTimeoutPipeline(
+        ILogger logger,
+        HttpTimeoutOptions? options = null)
+    {
+        options ??= new HttpTimeoutOptions();
+
+        return new ResiliencePipelineBuilder<HttpResponseMessage>()
+            .AddTimeout(new TimeoutStrategyOptions
+            {
+                Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds),
+                OnTimeout = args =>
+                {
+                    logger.LogWarning(
+                        "HTTP operation timed out after {Timeout}s",
+                        args.Timeout.TotalSeconds);
+                    return default;
+                }
+            })
+            .Build();
+    }
+
+    // ==================== COMBINED PIPELINES (Retry + Timeout) ====================
+
+    /// <summary>
+    /// Create a combined retry + timeout pipeline for database operations.
+    /// Timeout wraps each individual retry attempt.
+    /// </summary>
+    public static ResiliencePipeline CreateDatabaseRetryWithTimeoutPipeline(
+        ILogger logger,
+        DatabaseRetryOptions? retryOptions = null,
+        DatabaseTimeoutOptions? timeoutOptions = null)
+    {
+        retryOptions ??= new DatabaseRetryOptions();
+        timeoutOptions ??= new DatabaseTimeoutOptions();
+
+        return new ResiliencePipelineBuilder()
+            .AddRetry(new RetryStrategyOptions
+            {
+                ShouldHandle = new PredicateBuilder()
+                    .Handle<Exception>(ex => IsDatabaseTransientError(ex))
+                    .Handle<TimeoutRejectedException>(),
+                MaxRetryAttempts = retryOptions.MaxRetryAttempts,
+                Delay = TimeSpan.FromSeconds(retryOptions.InitialDelaySeconds),
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = retryOptions.UseJitter,
+                OnRetry = args =>
+                {
+                    logger.LogWarning(
+                        "Database retry+timeout attempt {Attempt} after {Delay}ms. Exception: {ExceptionType}: {Message}",
+                        args.AttemptNumber,
+                        args.RetryDelay.TotalMilliseconds,
+                        args.Outcome.Exception?.GetType().Name,
+                        args.Outcome.Exception?.Message);
+                    return ValueTask.CompletedTask;
+                }
+            })
+            .AddTimeout(new TimeoutStrategyOptions
+            {
+                Timeout = TimeSpan.FromSeconds(timeoutOptions.TimeoutSeconds),
+                OnTimeout = args =>
+                {
+                    logger.LogWarning(
+                        "Database operation timed out after {Timeout}s (per-attempt timeout)",
+                        args.Timeout.TotalSeconds);
+                    return default;
+                }
+            })
+            .Build();
+    }
+
+    /// <summary>
+    /// Create a combined retry + timeout pipeline for Redis operations.
+    /// Timeout wraps each individual retry attempt.
+    /// </summary>
+    public static ResiliencePipeline CreateRedisRetryWithTimeoutPipeline(
+        ILogger logger,
+        RedisRetryOptions? retryOptions = null,
+        RedisTimeoutOptions? timeoutOptions = null)
+    {
+        retryOptions ??= new RedisRetryOptions();
+        timeoutOptions ??= new RedisTimeoutOptions();
+
+        return new ResiliencePipelineBuilder()
+            .AddRetry(new RetryStrategyOptions
+            {
+                ShouldHandle = new PredicateBuilder()
+                    .Handle<Exception>(ex => IsRedisTransientError(ex))
+                    .Handle<TimeoutRejectedException>(),
+                MaxRetryAttempts = retryOptions.MaxRetryAttempts,
+                Delay = TimeSpan.FromSeconds(retryOptions.InitialDelaySeconds),
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = retryOptions.UseJitter,
+                OnRetry = args =>
+                {
+                    logger.LogWarning(
+                        "Redis retry+timeout attempt {Attempt} after {Delay}ms. Exception: {ExceptionType}: {Message}",
+                        args.AttemptNumber,
+                        args.RetryDelay.TotalMilliseconds,
+                        args.Outcome.Exception?.GetType().Name,
+                        args.Outcome.Exception?.Message);
+                    return ValueTask.CompletedTask;
+                }
+            })
+            .AddTimeout(new TimeoutStrategyOptions
+            {
+                Timeout = TimeSpan.FromSeconds(timeoutOptions.TimeoutSeconds),
+                OnTimeout = args =>
+                {
+                    logger.LogWarning(
+                        "Redis operation timed out after {Timeout}s (per-attempt timeout)",
+                        args.Timeout.TotalSeconds);
+                    return default;
+                }
+            })
+            .Build();
+    }
+
+    /// <summary>
+    /// Create a combined retry + timeout pipeline for HTTP operations.
+    /// Timeout wraps each individual retry attempt.
+    /// </summary>
+    public static ResiliencePipeline<HttpResponseMessage> CreateHttpRetryWithTimeoutPipeline(
+        ILogger logger,
+        HttpRetryOptions? retryOptions = null,
+        HttpTimeoutOptions? timeoutOptions = null)
+    {
+        retryOptions ??= new HttpRetryOptions();
+        timeoutOptions ??= new HttpTimeoutOptions();
+
+        return new ResiliencePipelineBuilder<HttpResponseMessage>()
+            .AddRetry(new RetryStrategyOptions<HttpResponseMessage>
+            {
+                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                    .Handle<HttpRequestException>()
+                    .Handle<TaskCanceledException>()
+                    .Handle<TimeoutRejectedException>()
+                    .HandleResult(response =>
+                        (int)response.StatusCode >= 500 ||
+                        response.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                        response.StatusCode == System.Net.HttpStatusCode.TooManyRequests),
+                MaxRetryAttempts = retryOptions.MaxRetryAttempts,
+                Delay = TimeSpan.FromSeconds(retryOptions.InitialDelaySeconds),
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = retryOptions.UseJitter,
+                OnRetry = args =>
+                {
+                    var statusCode = args.Outcome.Result?.StatusCode.ToString() ?? "N/A";
+                    var exType = args.Outcome.Exception?.GetType().Name ?? "N/A";
+
+                    logger.LogWarning(
+                        "HTTP retry+timeout attempt {Attempt} after {Delay}ms. StatusCode: {StatusCode}, Exception: {ExceptionType}",
+                        args.AttemptNumber,
+                        args.RetryDelay.TotalMilliseconds,
+                        statusCode,
+                        exType);
+                    return ValueTask.CompletedTask;
+                }
+            })
+            .AddTimeout(new TimeoutStrategyOptions
+            {
+                Timeout = TimeSpan.FromSeconds(timeoutOptions.TimeoutSeconds),
+                OnTimeout = args =>
+                {
+                    logger.LogWarning(
+                        "HTTP operation timed out after {Timeout}s (per-attempt timeout)",
+                        args.Timeout.TotalSeconds);
+                    return default;
+                }
+            })
+            .Build();
     }
 
     // Helper methods for transient error detection
