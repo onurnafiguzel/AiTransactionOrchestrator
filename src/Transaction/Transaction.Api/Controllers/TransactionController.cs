@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using BuildingBlocks.Contracts.Common;
 using BuildingBlocks.Contracts.Observability;
 using MediatR;
@@ -15,7 +16,8 @@ namespace Transaction.Api.Controllers;
 /// Transaction management endpoints
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Produces("application/json")]
 [Authorize]
 public sealed class TransactionController(

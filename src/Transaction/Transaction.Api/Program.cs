@@ -13,6 +13,7 @@ using Transaction.Api.Middleware;
 using Transaction.Api.Outbox;
 using Transaction.Application;
 using Transaction.Application.IP;
+using Asp.Versioning;
 using Transaction.Infrastructure;
 using Transaction.Infrastructure.Caching;
 
@@ -26,6 +27,21 @@ builder.Services.AddSerilog((sp, lc) =>
 
 // Add OpenTelemetry instrumentation
 builder.AddOpenTelemetryHttp("Transaction.Api");
+
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = ApiVersionReader.Combine(
+        new UrlSegmentApiVersionReader(),
+        new HeaderApiVersionReader("X-Api-Version"));
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>

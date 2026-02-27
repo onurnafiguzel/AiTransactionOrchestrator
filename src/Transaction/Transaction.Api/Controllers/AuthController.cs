@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using BuildingBlocks.Contracts.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +13,8 @@ namespace Transaction.Api.Controllers;
 /// Authentication endpoints for user management
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Produces("application/json")]
 public sealed class AuthController(
     ISender mediator,

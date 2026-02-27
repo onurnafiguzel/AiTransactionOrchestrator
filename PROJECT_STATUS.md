@@ -10,14 +10,14 @@
 
 | Metrik | Değer | Durum |
 |--------|-------|--------|
-| **Kod Tamamlanma** | 98% |  Excellent |
+| **Kod Tamamlanma** | 99% |  Excellent |
 | **Test Coverage** | 0% |  Critical |
 | **Microservices** | 5/5 |  Complete |
 | **Infrastructure** | 5/5 |  Complete |
 | **Monitoring** | 3/3 |  Complete |
 | **Distributed Tracing** | Jaeger |  Complete |
 | **Resiliency Patterns** | 9/16 |  56% |
-| **System Design** | 8/20 |  40% |
+| **System Design** | 9/20 |  45% |
 | **Observability** | 8/22 |  36% |
 
 ---
@@ -214,12 +214,6 @@
 
 ### Application Features
 
-#### 28. API Versioning
-**Süre:** 3-4 saat  
-**Pattern:** URL versioning (`/v1/transactions`)
-
----
-
 #### 29. Webhook Notifications
 **Süre:** 8-10 saat
 
@@ -293,7 +287,6 @@
 ### Sprint 4+: Scale & Features (İsteğe Bağlı)
 
 - [ ] API Gateway (20h)
-- [ ] API versioning (4h)
 - [ ] Read Replicas (10h)
 - [ ] Service Discovery (10h)
 - [ ] Webhook notifications (10h)

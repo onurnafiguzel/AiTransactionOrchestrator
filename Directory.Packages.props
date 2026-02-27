@@ -17,6 +17,10 @@
 		<!-- API: Swagger / OpenAPI -->
 		<PackageVersion Include="Swashbuckle.AspNetCore" Version="6.9.0" />
 
+		<!-- API Versioning -->
+		<PackageVersion Include="Asp.Versioning.Mvc" Version="8.1.0" />
+		<PackageVersion Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
+
 		<!-- Worker Service & Configuration -->
 		<PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
 		<PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
